@@ -1,5 +1,24 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { dashboardHtml, type DashboardBootstrap } from '../../lib/dashboard-html';
+
+async function finishMenuAnimation(page: Page) {
+  await page.locator('.hamburger-layout').evaluate(async layout => {
+    const animations = [...layout.getAnimations(), ...layout.querySelector('.sidebar')!.getAnimations({ subtree: true })]
+      .filter(animation => animation.effect?.getComputedTiming().endTime !== Infinity);
+    await Promise.all(animations.map(animation => animation.finished.catch(() => {})));
+  });
+}
+async function openNavigation(page: Page) {
+  const toggle = page.locator('#menuToggle');
+  if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await finishMenuAnimation(page);
+}
+async function selectWorkspace(page: Page, workspace: string) {
+  await openNavigation(page);
+  await page.locator(`.nav-item[data-page="${workspace}"]`).click();
+  await expect(page.locator('#menuToggle')).toHaveAttribute('aria-expanded', 'false');
+}
 
 test('login, seluruh menu referensi, filter dan logout berfungsi', async ({ page, request }) => {
   const errors: string[] = [];
@@ -39,12 +58,12 @@ test('login, seluruh menu referensi, filter dan logout berfungsi', async ({ page
   });
   expect(performanceLayout.scrollWidth).toBeLessThanOrEqual(performanceLayout.width + 1);
   expect(performanceLayout.border).toBe('1px');
-  await page.locator('[data-page="monthly"]').click();
+  await selectWorkspace(page, 'monthly');
   await expect(page.getByRole('heading', { name: 'Tren Bulanan Sulbagsel', exact: true })).toBeVisible();
   await expect(page.locator('#monthlyChart > div > b').first()).toHaveText('Sulbagsel');
   await expect(page.locator('#monthlyChart .monthly-branch-heading')).toHaveText('Tren Bulanan Branch');
   await expect(page.locator('#monthlyChart > div > b').nth(1)).toHaveText('BONE');
-  await page.locator('[data-page="progress"]').click();
+  await selectWorkspace(page, 'progress');
   await page.locator('#branch').selectOption('MAKASSAR');
   await expect(page.locator('#chart .daily-trend-card')).not.toHaveCount(0);
   await expect(page.locator('#chart .branch-trend-heading')).toHaveCount(1);
@@ -58,12 +77,12 @@ test('login, seluruh menu referensi, filter dan logout berfungsi', async ({ page
   expect(areaChart!.width / areaChart!.height).toBeCloseTo(550 / 200, 1);
   expect(areaChart!.height).toBeGreaterThan(205);
   await page.locator('#sa').selectOption('');
-  await page.locator('[data-page="monthly"]').click();
+  await selectWorkspace(page, 'monthly');
   await expect(page.locator('#page-monthly')).toBeVisible();
   await expect(page.locator('#monthlyChart svg')).not.toHaveCount(0);
   await expect(page.locator('#monthlyChart .monthly-branch-heading')).toHaveCount(1);
   await expect(page.locator('#monthlyChart > div > b').first()).toHaveText('MAKASSAR');
-  await page.locator('[data-page="business"]').click();
+  await selectWorkspace(page, 'business');
   await expect(page.locator('#imjasTable tr')).not.toHaveCount(0);
   await expect(page.locator('#regionalImjasHeading')).toBeVisible();
   await expect(page.locator('#regionalImjasHeading')).toContainText('Realisasi & Loss Regional Sulbagsel');
@@ -87,7 +106,7 @@ test('login, seluruh menu referensi, filter dan logout berfungsi', async ({ page
   await page.screenshot({ path: test.info().outputPath('dashboard-mobile.png') });
   const mobileLegend = await page.locator('#imjasTrend .imjas-legend').evaluate(legend => ({ width: legend.clientWidth, scrollWidth: legend.scrollWidth }));
   expect(mobileLegend.scrollWidth).toBeLessThanOrEqual(mobileLegend.width + 1);
-  await page.locator('[data-page="progress"]').click();
+  await selectWorkspace(page, 'progress');
   await expect(page.locator('#cards .card')).toHaveCount(7);
   await expect(page.locator('#branch')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
@@ -96,8 +115,63 @@ test('login, seluruh menu referensi, filter dan logout berfungsi', async ({ page
   expect(mobilePerformance.scrollWidth).toBeLessThanOrEqual(mobilePerformance.width + 1);
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: test.info().outputPath('dashboard-mobile-progress.png') });
+  await openNavigation(page);
   await page.getByRole('button', { name: 'Keluar' }).click();
   await expect(page).toHaveURL(/\/login$/);
+  expect(errors).toEqual([]);
+});
+
+test('logo hamburger membuka menu beranimasi, mendukung keyboard dan mobile tanpa mereset filter', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  const state: DashboardBootstrap = {
+    persisted: true, error: null, syncedAt: '2026-11-05T06:00:00Z',
+    snapshots: { '2026-11-04': { ANT: 2 }, '2026-11-05': { ANT: 1 } },
+    mapping: { ANT: { branch: 'MAKASSAR', sa: 'SERVICE AREA TAMALANREA', region: 'SULBAGSEL' } },
+  };
+  await page.route('**/dashboard', async route => route.fulfill({ contentType: 'text/html', body: await dashboardHtml(state) }));
+  await page.route('**/api/dashboard', route => route.fulfill({ json: state }));
+  await page.route('**/api/tickets?*', route => route.fulfill({ json: { tickets: [{ INCIDENT: 'INC-TEST', WORKZONE: 'ANT' }] } }));
+  await page.goto('/dashboard');
+  const toggle = page.getByRole('button', { name: 'Buka menu UNSPEC', exact: true });
+  await expect(toggle).toBeVisible();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#sidebarMenu')).toBeHidden();
+  expect(await page.locator('#sidebarMenu').evaluate(menu => (menu as HTMLElement).inert)).toBeTruthy();
+  await toggle.focus();await page.keyboard.press('Tab');
+  await expect(page.locator('#date')).toBeFocused();
+  await page.screenshot({ path: test.info().outputPath('hamburger-closed.png') });
+  await page.locator('#branch').selectOption('MAKASSAR');
+  await openNavigation(page);
+  await expect(page.locator('#sidebarMenu .nav-item')).toHaveCount(3);
+  await expect(page.locator('#sidebarMenu .nav-item').first()).toBeVisible();
+  await expect(page.locator('#sidebarMenu .theme-button')).toBeVisible();
+  await expect(page.locator('#sidebarMenu .logout-button')).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('hamburger-open.png') });
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#menuToggle')).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#menuToggle')).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#menuToggle')).toHaveAttribute('aria-expanded', 'true');
+  await page.locator('.nav-item[data-page="monthly"]').click();
+  await expect(page.locator('#page-monthly')).toBeVisible();
+  await expect(page.locator('#menuToggle')).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#branch')).toHaveValue('MAKASSAR');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openNavigation(page);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  await page.getByRole('button', { name: 'Mode Malam', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await finishMenuAnimation(page);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: test.info().outputPath('hamburger-mobile-dark.png') });
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#menuToggle')).toHaveAttribute('aria-expanded', 'false');
+  await page.emulateMedia({ media: 'print' });
+  await expect(page.locator('.sidebar')).toBeHidden();
+  await expect(page.locator('#page-progress')).toBeVisible();
+  await expect(page.locator('#page-monthly')).toBeVisible();
+  await expect(page.locator('#page-business')).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -207,6 +281,7 @@ test('refresh mempertahankan saldo terakhir selama API baru masih dimuat atau ga
   pending[0]();
   await expect(page.locator('#cards .card').first().locator('.value')).toHaveText('1.120');
   await expect(page.locator('#syncProgress')).toBeHidden();
+  await openNavigation(page);
   await page.getByRole('button', { name: 'Mode Malam', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect(page.getByRole('button', { name: 'Mode Siang', exact: true })).toBeVisible();
@@ -235,6 +310,7 @@ test('refresh mempertahankan saldo terakhir selama API baru masih dimuat atau ga
   pending[1]();
   await expect(page.locator('#syncStatus')).toContainText('API sementara gagal');
   await expect(page.locator('#syncProgress')).toBeHidden();
+  await openNavigation(page);
   await page.getByRole('button', { name: 'Mode Siang', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   expect(await page.locator('#cards .card').first().evaluate(element => getComputedStyle(element).boxShadow)).not.toBe('none');
@@ -265,11 +341,11 @@ test('periode berlanjut otomatis dan saldo mengikuti WORKZONE unik', async ({ pa
   await expect(page.locator('#date')).toHaveValue('2027-01-02');
   await expect(page.locator('#cards .card').first().locator('.value')).toHaveText('1');
   await expect(page.locator('#branches tr').first().locator('td').nth(5)).toHaveText('29');
-  await page.locator('[data-page="monthly"]').click();
+  await selectWorkspace(page, 'monthly');
   await expect(page.locator('#monthlyCards .card')).toHaveCount(7);
   await expect(page.locator('#monthlyHeading')).toContainText('Januari 2027');
   await expect(page.locator('#monthlyCards .card').last()).toContainText('JANUARI 2027 MTD');
-  await page.locator('[data-page="business"]').click();
+  await selectWorkspace(page, 'business');
   await expect(page.locator('#imjasMonthFilter option')).toHaveCount(8);
   await expect(page.locator('#businessHeading')).toContainText('Januari 2027 MTD');
   liveBalance = 2;

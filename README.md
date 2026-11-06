@@ -2,6 +2,10 @@
 
 Dashboard Next.js untuk Vercel, dengan login, pengambilan data terbaru saat halaman dibuka atau di-refresh, dan histori Neon PostgreSQL. Tidak ada polling otomatis atau jeda 60 detik. Tampilan menggunakan **HTML referensi asli** sebagai sumber layout, CSS, tabel, dan rumus. File referensi tetap diperlukan saat build/deploy.
 
+## Navigasi dashboard
+
+Menu awal tertutup dan hanya logo UNSPEC yang terlihat sebagai pemicu hamburger. Klik logo untuk membuka daftar menu dengan animasi; klik lagi atau tekan Escape untuk menutup. Memilih halaman otomatis menutup menu tanpa mereset filter. Status pembaruan, mode siang/malam, dan tombol Keluar tetap tersedia di dalam daftar. Pada layar kecil menu terbuka ke bawah; pada desktop sidebar melebar dan area dashboard menyesuaikan. Tombol dapat dioperasikan lewat keyboard dan animasi mengikuti preferensi reduced motion.
+
 ## Menjalankan lokal
 
 1. Gunakan Node.js 22 atau lebih baru.

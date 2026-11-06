@@ -1,11 +1,14 @@
+import { navigationRuntime } from './dashboard-navigation';
+
 export const clientRuntime = String.raw`
+${navigationRuntime}
 // Extend the reference dashboard without changing its navigation or component layout.
 const statusNode=document.querySelector('.sidebar-note');
 let achievedGaugePercent=0;
 statusNode.innerHTML='<span class="status-dot"></span><span id="syncStatus" class="runtime-status" role="status">Memuat data…</span>';
 const logout=document.createElement('button');logout.className='logout-button';logout.textContent='Keluar';
 logout.onclick=async()=>{try{await fetch('/api/auth/logout',{method:'POST'});location.assign('/login')}catch{setStatus('Logout gagal. Coba lagi.',true)}};
-document.querySelector('.sidebar').append(logout);
+(document.getElementById('sidebarMenuInner')||document.querySelector('.sidebar')).append(logout);
 const themeButton=document.createElement('button');themeButton.type='button';themeButton.className='theme-button';logout.before(themeButton);
 const themeIcon=paths=>'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+paths+'</svg>';
 function setTheme(theme,save=true){

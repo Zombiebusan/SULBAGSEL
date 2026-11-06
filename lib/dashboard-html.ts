@@ -2,6 +2,7 @@ import { initialSpan, reference } from './reference';
 import { normalizeTickets } from './normalize';
 import { clientRuntime } from './dashboard-runtime';
 import { dashboardAppearance, themeInit } from './dashboard-appearance';
+import { hamburgerNavigation, navigationStyle } from './dashboard-navigation';
 import type { Workzone } from './types';
 
 export type DashboardBootstrap = {
@@ -126,5 +127,6 @@ export async function dashboardHtml(bootstrap?: DashboardBootstrap) {
   result = result.replace('</head>', '<style>.runtime-status{font-size:11px;line-height:1.5;overflow-wrap:anywhere}.runtime-status.error{color:#c72e43}.logout-button{width:100%;font-size:11px;margin-top:12px}#cards .balance-value{display:flex;align-items:center;justify-content:space-between;gap:6px}.balance-trend-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 30px;width:30px;height:30px;border-radius:8px}.balance-trend-icon.green{background:#e9f6ef}.balance-trend-icon.red{background:#fff0f2}.balance-trend-icon.muted{background:#f1f5f9}.balance-trend-icon svg{display:block}.balance-change{font-size:11px;line-height:1.4}.balance-change strong{display:block;font-weight:650}.balance-change small{display:block;color:var(--muted);font-size:10px;margin-top:2px}@media print{.logout-button{display:none!important}}</style></head>');
   result = result.replace('</body>', '<script>const bootstrapState='+JSON.stringify(bootstrap ?? null).replace(/</g, '\\u003c')+';\n'+clientRuntime+'</script></body>');
   result = result.replace('</head>', '<script>'+themeInit+'</script><style>'+dashboardAppearance+'</style></head>');
+  result = hamburgerNavigation(result).replace('</head>', '<style>'+navigationStyle+'</style></head>');
   return result;
 }
