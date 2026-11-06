@@ -51,7 +51,9 @@ Setelah mengubah environment variables di Vercel, lakukan redeploy.
 
 Endpoint `POST /api/bot/unspec` disediakan untuk KKP-BOT. Header `Authorization: Bearer <UNSPEC_BOT_API_TOKEN>` wajib, dengan token minimal 32 karakter di environment Production Vercel. Bot menggunakan URL endpoint serta token yang sama melalui `UNSPEC_API_URL` dan `UNSPEC_API_TOKEN`.
 
-Endpoint mengambil data API lengkap terlebih dahulu (batas pengambilan sumber 38 detik), lalu mengembalikan agregat seluruh STO Sulbagsel untuk hari ini WITA dan tepat tanggal kemarin. Respons hanya berisi hitungan dan metadata tanggal, tanpa identitas pelanggan. Saat sinkronisasi sedang berjalan endpoint memberi HTTP 409; jika pengambilan gagal memberi HTTP 503. Data lama tidak dikembalikan sebagai hasil pengambilan live yang sukses. Integrasi ini tidak mengaktifkan cron atau polling otomatis dashboard.
+Bot mengirim JSON `{ "requestId": "tg-..." }`. Endpoint menyimpan permintaan pada tabel `unspec_bot_requests`, mengembalikan HTTP 202 segera, lalu menyiapkan data di background melalui Next.js `after()` (durasi function 300 detik, batas worker 210 detik). Bot mengecek `GET /api/bot/unspec?requestId=...`; hasil lengkap dikembalikan sebagai HTTP 200. Request ID yang sama tidak memulai pengambilan baru, termasuk setelah cold start/retry Telegram.
+
+Snapshot hanya boleh dipakai bersama jika waktu pengambilannya sesudah permintaan tersebut. Tidak ada fallback diam-diam ke snapshot lama. Payload hanya memuat agregat seluruh STO Sulbagsel untuk hari ini WITA, tepat tanggal kemarin, dan metadata job; tidak ada identitas pelanggan. Kegagalan dibedakan melalui kode terstruktur (misalnya `UPSTREAM_TIMEOUT`, `UPSTREAM_HTTP_ERROR`, `DATABASE_UNAVAILABLE`, `BOT_NOT_CONFIGURED`). Pemanggil lama tanpa requestId masih dapat memakai jalur sinkron 38 detik. Integrasi ini tidak mengaktifkan cron atau polling otomatis dashboard.
 
 - Tiket: `https://monica.pamasuka.id/android/android/tiket_bar_unspec.php`
 - Mapping: `https://monica.pamasuka.id/android/android/get_workzone_filter.php`

@@ -2,18 +2,21 @@ import { isReferenceUnspecTicket, normalizeMapping, normalizeTickets } from './n
 
 const BASE = 'https://monica.pamasuka.id/android/android/';
 type Page = { data: Record<string, unknown>[]; total: number; total_tabel: number; page: number; limit: number };
-async function json(url: string, signal?: AbortSignal) {
-  const response = await fetch(url, { cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(25000)]) : AbortSignal.timeout(25000) });
-  if (!response.ok) throw new Error(`API sumber mengembalikan HTTP ${response.status}.`);
+export class UpstreamHttpError extends Error {
+  constructor(readonly status: number) { super(`API sumber mengembalikan HTTP ${status}.`); }
+}
+async function json(url: string, signal?: AbortSignal, timeoutMs = 25000) {
+  const response = await fetch(url, { cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs) });
+  if (!response.ok) throw new UpstreamHttpError(response.status);
   return response.json();
 }
-export async function fetchComplete(signal?: AbortSignal) {
-  const rawMapping = await json(`${BASE}get_workzone_filter.php`, signal);
+export async function fetchComplete(signal?: AbortSignal, requestTimeoutMs = 25000) {
+  const rawMapping = await json(`${BASE}get_workzone_filter.php`, signal, requestTimeoutMs);
   if (!Array.isArray(rawMapping) || !rawMapping.length) throw new Error('Mapping wilayah dari API tidak valid.');
   const mapping = normalizeMapping(rawMapping);
   if (!Object.values(mapping).some(m => m.region === 'SULBAGSEL')) throw new Error('Mapping Sulbagsel tidak tersedia.');
   const load = async (page: number): Promise<Page> => {
-    const result = await json(`${BASE}tiket_bar_unspec.php?page=${page}&limit=500`, signal);
+    const result = await json(`${BASE}tiket_bar_unspec.php?page=${page}&limit=500`, signal, requestTimeoutMs);
     if (!Array.isArray(result.data) || !Number.isInteger(result.total_tabel) || result.total_tabel < 0 || result.page !== page || !Number.isInteger(result.limit) || result.limit < 1) {
       throw new Error('Format pagination tiket tidak valid.');
     }

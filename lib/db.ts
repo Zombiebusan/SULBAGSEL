@@ -11,7 +11,7 @@ export function counts(rows: Ticket[]) {
   return result;
 }
 export const databaseConfigured = () => !!process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('USER:PASSWORD');
-function database() {
+export function database() {
   if (!databaseConfigured()) throw new Error('DATABASE_URL Neon belum dikonfigurasi.');
   return neon(process.env.DATABASE_URL!);
 }
@@ -30,6 +30,12 @@ async function setup() {
     id integer PRIMARY KEY CHECK (id = 1), mapping jsonb,
     synced_at timestamptz, error text, lock_token text, lock_until timestamptz,
     source_total integer, seeded boolean NOT NULL DEFAULT false
+  )`;
+  await sql`CREATE TABLE IF NOT EXISTS unspec_bot_requests (
+    request_id text PRIMARY KEY,
+    status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','running','complete','failed')),
+    requested_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+    owner_token text, lease_until timestamptz, payload jsonb, error_code text
   )`;
   await sql`INSERT INTO unspec_state (id) VALUES (1) ON CONFLICT DO NOTHING`;
   const state = await sql`SELECT seeded FROM unspec_state WHERE id = 1`;
@@ -75,14 +81,25 @@ export async function snapshot(date: string): Promise<Ticket[] | null> {
   const rows = await database()`SELECT tickets FROM unspec_snapshots WHERE date = ${date}`;
   return rows[0]?.tickets ?? null;
 }
-export async function synchronize(signal?: AbortSignal) {
+export interface SynchronizedSnapshot { date: string; count: number; counts: Record<string, number>; mapping: Record<string, Workzone>; capturedAt: string }
+
+export async function synchronizedAfter(minimumTime: string): Promise<SynchronizedSnapshot | null> {
+  await initialize();
+  const rows = await database()`SELECT p.date, p.counts, jsonb_array_length(p.tickets) AS count, s.mapping, s.synced_at
+    FROM unspec_state s JOIN unspec_snapshots p ON p.date = to_char(s.synced_at AT TIME ZONE 'Asia/Makassar', 'YYYY-MM-DD')
+    WHERE s.id = 1 AND s.synced_at >= ${minimumTime}::timestamptz AND p.source = 'api'`;
+  const row = rows[0];
+  return row ? { date: row.date, counts: row.counts, count: Number(row.count), mapping: row.mapping, capturedAt: new Date(row.synced_at).toISOString() } : null;
+}
+
+export async function synchronize(signal?: AbortSignal, requestTimeoutMs = 25000) {
   await initialize();
   const sql = database(), token = randomUUID();
   const lease = await sql`UPDATE unspec_state SET lock_token = ${token}, lock_until = now() + interval '240 seconds'
     WHERE id = 1 AND (lock_until IS NULL OR lock_until < now()) RETURNING id`;
   if (!lease.length) return { skipped: true as const };
   try {
-    const { mapping, tickets, sourceTotal } = await fetchComplete(signal);
+    const { mapping, tickets, sourceTotal } = await fetchComplete(signal, requestTimeoutMs);
     signal?.throwIfAborted();
     const capturedAt = new Date().toISOString(), date = witaDate(new Date(capturedAt));
     const balances = counts(tickets);
