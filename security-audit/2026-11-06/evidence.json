@@ -1,0 +1,80 @@
+{
+  "checkedAt": "2026-11-06T02:14:24.415Z",
+  "method": "manual source review and isolated local production-build PoCs; not a Strix engine scan",
+  "environment": {
+    "databaseUrlEmpty": true,
+    "testOnlyCredentials": true,
+    "productionDatabaseWrites": false,
+    "monicaSecurityTesting": false,
+    "productionRequests": "One passive GET /login per validation run; no production login attempts or exploit payloads"
+  },
+  "findings": {
+    "UNSPEC-SEC-001": {
+      "name": "SVG tooltip XSS through mapping text",
+      "syntheticMappingFixture": true,
+      "uppercaseNormalizationApplied": true,
+      "numericEntityHandler": true,
+      "scriptExecuted": true,
+      "injectedSvgImages": 2,
+      "clientErrors": 1,
+      "externalMappingWriteAccessTested": false
+    },
+    "UNSPEC-SEC-002": {
+      "name": "No application login throttling observed",
+      "failedAttempts": 20,
+      "statuses": [401],
+      "anyRetryAfter": false,
+      "productionWafRateLimitsTested": false
+    },
+    "UNSPEC-SEC-003": {
+      "name": "Copied session cookie replay after logout",
+      "logoutStatus": 200,
+      "replayStatus": 200,
+      "protectedRowsReturned": 411,
+      "cookieValueRecorded": false
+    },
+    "UNSPEC-SEC-004": {
+      "name": "Spreadsheet formula retained in downloaded CSV",
+      "downloaded": true,
+      "unneutralizedFormulaCell": true,
+      "syntheticPayload": "=1+1",
+      "formulaExecutedInSpreadsheet": false
+    }
+  },
+  "controls": {
+    "unauthenticatedAccess": {
+      "GET /dashboard": 302,
+      "GET /api/dashboard": 401,
+      "GET /api/tickets?date=2026-11-04": 401,
+      "POST /api/history": 401,
+      "POST /api/dashboard": 401,
+      "POST /api/bot/unspec": 401,
+      "GET /api/cron/sync": 401,
+      "GET /.env.local": 404,
+      "GET /_next/server/app/api/auth/login/route.js": 404,
+      "GET /UNSPEC-Sulbagsel%20november.html": 404
+    },
+    "cookie": { "httpOnly": true, "secure": true, "sameSiteLax": true, "tamperedRejected": 401, "expiredRejected": 401 },
+    "csrf": { "crossOriginLogin": 403, "crossOriginDashboardPost": 403, "crossOriginHistory": 403, "crossOriginLogout": 403 },
+    "dateInjectionRejected": 400,
+    "historyOver4000000BytesRejected": 413,
+    "ticketHtmlEscaped": { "scriptExecuted": false, "injectedImages": 0 },
+    "dashboardCsp": { "present": true, "unsafeInlineScripts": true },
+    "productionPassiveHeaders": {
+      "path": "https://underspec-sulbagsel.vercel.app/login",
+      "status": 200,
+      "hsts": "max-age=63072000; includeSubDomains; preload",
+      "nosniff": "nosniff",
+      "frameOptions": "DENY",
+      "cspPresent": false
+    }
+  },
+  "dependencyAudit": { "productionKnownVulnerabilities": 0, "allDependenciesKnownVulnerabilities": 0 },
+  "limitations": [
+    "Strix and Docker were not available in PATH; no Strix/cloud scan was run",
+    "Mapping XSS was proven with a synthetic upstream fixture; the ability of an external attacker to alter the real mapping API was not tested",
+    "CSV formula output was confirmed; Excel/LibreOffice execution was not tested",
+    "No production exploit, stress test, real password guessing, or production data mutation was performed",
+    "No multi-user privilege separation, database grants, at-rest encryption, CI provenance, or production alerting validation"
+  ]
+}
