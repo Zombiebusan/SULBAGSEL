@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
-import { snapshot, synchronize } from '@/lib/db';
+import { morningBaseline, snapshot, synchronize } from '@/lib/db';
 import { botReportPayload, previousReportDate } from '@/lib/bot-report';
 import { after } from 'next/server';
 import { botFailureCode, botFailureMessage, createBotRequest, readBotRequest, runBotRequest, validBotRequestId, type BotRequest } from '@/lib/bot-requests';
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     const result = await synchronize(AbortSignal.timeout(38000));
     if (result.skipped) return Response.json({ error: 'Sinkronisasi lain sedang berlangsung. Silakan cetak ulang.' }, { status: 409, headers: { ...headers, 'Retry-After': '3' } });
     const old = await snapshot(previousReportDate(result.date));
-    return Response.json(botReportPayload(result, old), { headers });
+    return Response.json(botReportPayload(result, old, await morningBaseline(result.date)), { headers });
   } catch (error) {
     const code = botFailureCode(error);
     return Response.json({ code, error: botFailureMessage[code] }, { status: code === 'UPSTREAM_TIMEOUT' ? 504 : 503, headers });

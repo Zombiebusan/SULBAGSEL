@@ -14,7 +14,7 @@ Dashboard Next.js untuk Vercel, dengan login, pengambilan data terbaru saat hala
    node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    ```
 
-6. Opsional: isi `CRON_SECRET` dengan nilai acak lain jika endpoint sinkronisasi eksternal akan digunakan.
+6. Isi `CRON_SECRET` dengan nilai acak lain untuk pencatatan baseline bot pukul 08.00 WITA.
 7. Jalankan `npm run dev`, lalu buka http://localhost:3000.
 
 Username bawaan adalah **Sulbagsel**. Hash password bawaan cocok dengan password yang diminta saat pembuatan. Password divalidasi di server dan tidak dikirim dalam kode dashboard. Untuk mengganti password, jalankan `npm run password:hash`, lalu isi `AUTH_PASSWORD_HASH` dengan hasilnya.
@@ -33,13 +33,15 @@ Tanpa `DATABASE_URL`, aplikasi menampilkan histori referensi dengan keterangan *
    | `AUTH_USERNAME` | `Sulbagsel` |
    | `AUTH_PASSWORD_HASH` | Hash pada `.env.example`, atau hasil `npm run password:hash` |
    | `SESSION_SECRET` | Secret acak minimal 32 karakter |
-   | `CRON_SECRET` | Opsional: secret acak terpisah untuk pemicu sinkronisasi eksternal |
+   | `CRON_SECRET` | Secret acak terpisah untuk cron baseline bot pukul 08.00 WITA |
 
 4. Deploy, login, lalu periksa status sinkronisasi di sidebar.
 5. Pada akses data pertama, aplikasi membuat tabel dan mengimpor snapshot referensi secara otomatis. Pengguna database membutuhkan hak membuat tabel pada schema default.
 6. Refresh halaman dashboard untuk mengambil data terbaru dari API sumber dan menyimpannya ke Neon.
 
-Tidak ada cron otomatis pada `vercel.json`. Data disinkronkan saat halaman dibuka atau di-refresh. Endpoint `/api/cron/sync` tetap tersedia untuk pemicu eksternal dengan header `Authorization: Bearer <CRON_SECRET>` bila diperlukan, tetapi tidak dijadwalkan oleh aplikasi.
+Pembaruan tampilan tetap saat halaman dibuka atau di-refresh, tanpa polling 60 detik. Ada **satu cron harian khusus baseline bot** pada `0 0 * * *` UTC = **08.00 WITA**, menuju `/api/cron/morning`. Endpoint `/api/cron/sync` tetap tersedia untuk sinkronisasi manual eksternal dengan bearer `CRON_SECRET`.
+
+Baseline `unspec_morning_baselines` menyimpan hitungan pertama yang berhasil diambil pada 08.00–sebelum 08.05 WITA, tidak ditimpa pengambilan berikutnya, dan memiliki waktu capture aktual. Bot menghitung CLOSE HI sebagai baseline pagi dikurangi saldo terkini, bukan H-1; hasil dapat negatif. Tanpa baseline yang valid, API mengirim `morning: null` dan bot menampilkan `—`. Jangan menganggap data siang sebagai pengganti posisi 08.00. Cron yang terlambat pada Vercel Hobby dapat melewati jendela ini; gunakan scheduler yang presisi bila diperlukan.
 
 Saat refresh, server menyertakan snapshot terakhir dari Neon langsung pada HTML awal. Dashboard mempertahankan saldo dan grafik tersebut selama pengambilan API terbaru berlangsung; tidak kembali menampilkan snapshot bawaan 4 November. Data berubah setelah sinkronisasi baru berhasil. Jika database tidak dapat dibaca, halaman memberi respons gagal memuat alih-alih menampilkan angka referensi sebagai posisi terbaru.
 
@@ -53,7 +55,7 @@ Endpoint `POST /api/bot/unspec` disediakan untuk KKP-BOT. Header `Authorization:
 
 Bot mengirim JSON `{ "requestId": "tg-..." }`. Endpoint menyimpan permintaan pada tabel `unspec_bot_requests`, mengembalikan HTTP 202 segera, lalu menyiapkan data di background melalui Next.js `after()` (durasi function 300 detik, batas worker 210 detik). Bot mengecek `GET /api/bot/unspec?requestId=...`; hasil lengkap dikembalikan sebagai HTTP 200. Request ID yang sama tidak memulai pengambilan baru, termasuk setelah cold start/retry Telegram.
 
-Snapshot hanya boleh dipakai bersama jika waktu pengambilannya sesudah permintaan tersebut. Tidak ada fallback diam-diam ke snapshot lama. Payload hanya memuat agregat seluruh STO Sulbagsel untuk hari ini WITA, tepat tanggal kemarin, dan metadata job; tidak ada identitas pelanggan. Kegagalan dibedakan melalui kode terstruktur (misalnya `UPSTREAM_TIMEOUT`, `UPSTREAM_HTTP_ERROR`, `DATABASE_UNAVAILABLE`, `BOT_NOT_CONFIGURED`). Pemanggil lama tanpa requestId masih dapat memakai jalur sinkron 38 detik. Integrasi ini tidak mengaktifkan cron atau polling otomatis dashboard.
+Snapshot hanya boleh dipakai bersama jika waktu pengambilannya sesudah permintaan tersebut. Tidak ada fallback diam-diam ke snapshot lama. Payload memuat agregat STO hari ini WITA, tepat tanggal kemarin, baseline pagi terpisah bila tersedia, dan metadata job; tidak ada identitas pelanggan. Kegagalan dibedakan melalui kode terstruktur (misalnya `UPSTREAM_TIMEOUT`, `UPSTREAM_HTTP_ERROR`, `DATABASE_UNAVAILABLE`, `BOT_NOT_CONFIGURED`). Pemanggil lama tanpa requestId masih dapat memakai jalur sinkron 38 detik. Tidak ada polling otomatis dashboard; satu cron harian khusus baseline pagi dijelaskan di atas.
 
 - Tiket: `https://monica.pamasuka.id/android/android/tiket_bar_unspec.php`
 - Mapping: `https://monica.pamasuka.id/android/android/get_workzone_filter.php`
@@ -72,7 +74,7 @@ Snapshot hanya boleh dipakai bersama jika waktu pengambilannya sesudah permintaa
 - Zona waktu: **Asia/Makassar / WITA**.
 - Histori awal Juli–November 2026 mengikuti referensi, termasuk koreksi November dan basis pelanggan yang disematkan pada HTML.
 - Oktober 2026 tetap FM sampai **30 Oktober 2026**.
-- Snapshot hari berjalan diperbarui saat halaman dibuka atau di-refresh; hari sebelumnya dipertahankan. Hari tanpa akses dashboard tidak menghasilkan snapshot otomatis. H-1 adalah snapshot sebelumnya yang tersedia, sesuai referensi.
+- Snapshot hari berjalan diperbarui saat halaman dibuka/di-refresh, diminta bot, atau cron baseline 08.00 berjalan; hari sebelumnya dipertahankan. H-1 dashboard tetap snapshot sebelumnya yang tersedia sesuai referensi, sedangkan baseline pagi bot tersimpan terpisah.
 - Bulan baru otomatis ditambahkan mulai Desember 2026, termasuk pergantian tahun. Bulan berjalan berlabel MTD; bulan sebelumnya FM berdasarkan snapshot terakhir yang tersedia.
 - Bulan tanpa snapshot ditampilkan sebagai data belum tersedia, bukan nol. Tidak ada pengisian ulang historis dari tanggal laporan tiket.
 - Basis pelanggan, nilai IMJAS, dan bobot 6% mengikuti referensi; API yang diberikan belum menyediakan pembaruan basis tersebut. STO baru tanpa basis pelanggan disebutkan di catatan bawah dashboard.

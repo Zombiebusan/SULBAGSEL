@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
-import { database, initialize, snapshot, synchronize, synchronizedAfter, type SynchronizedSnapshot } from './db';
+import { database, initialize, morningBaseline, snapshot, synchronize, synchronizedAfter, type SynchronizedSnapshot } from './db';
 import { botReportPayload, previousReportDate } from './bot-report';
 import { UpstreamHttpError } from './upstream';
 import type { Ticket } from './types';
+import type { MorningBaseline } from './morning-baseline';
 
 export type BotFailureCode = 'UPSTREAM_TIMEOUT' | 'UPSTREAM_HTTP_ERROR' | 'UPSTREAM_CHANGED' | 'SYNC_FAILED';
 export type BotPayload = ReturnType<typeof botReportPayload> & { requestId: string; requestedAt: string; completedAt: string };
@@ -52,12 +53,13 @@ export interface BotWorkerDependencies {
   fresh: (minimumTime: string) => Promise<SynchronizedSnapshot | null>;
   sync: (signal: AbortSignal) => Promise<({ skipped: false } & SynchronizedSnapshot) | { skipped: true }>;
   previous: (date: string) => Promise<Ticket[] | null>;
+  morning: (date: string) => Promise<MorningBaseline | null>;
   complete: (id: string, owner: string, payload: BotPayload) => Promise<void>;
   fail: (id: string, owner: string, code: BotFailureCode) => Promise<void>;
   pause: (signal: AbortSignal) => Promise<void>;
 }
 const dependencies: BotWorkerDependencies = {
-  claim, fresh: synchronizedAfter, sync: signal => synchronize(signal, 45000), previous: snapshot, complete, fail,
+  claim, fresh: synchronizedAfter, sync: signal => synchronize(signal, 45000), previous: snapshot, morning: morningBaseline, complete, fail,
   pause: signal => delay(2000, undefined, { signal }),
 };
 
@@ -84,8 +86,9 @@ export async function runBotRequest(id: string, deps = dependencies): Promise<vo
         current = result;
       }
       const previous = await deps.previous(previousReportDate(current.date));
+      const morning = await deps.morning(current.date);
       signal.throwIfAborted();
-      await deps.complete(id, owner, { ...botReportPayload(current, previous), requestId: id, requestedAt, completedAt: new Date().toISOString() });
+      await deps.complete(id, owner, { ...botReportPayload(current, previous, morning), requestId: id, requestedAt, completedAt: new Date().toISOString() });
       return;
     }
   } catch (error) { await deps.fail(id, owner, botFailureCode(error)); }

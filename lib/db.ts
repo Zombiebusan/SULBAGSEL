@@ -4,6 +4,7 @@ import { reference } from './reference';
 import { isReferenceUnspecTicket, normalizeTickets, witaDate } from './normalize';
 import { fetchComplete } from './upstream';
 import type { Ticket, Workzone } from './types';
+import { isMorningCapture, type MorningBaseline } from './morning-baseline';
 
 export function counts(rows: Ticket[]) {
   const result: Record<string, number> = {};
@@ -36,6 +37,13 @@ async function setup() {
     status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','running','complete','failed')),
     requested_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
     owner_token text, lease_until timestamptz, payload jsonb, error_code text
+  )`;
+  await sql`CREATE TABLE IF NOT EXISTS unspec_morning_baselines (
+    date text PRIMARY KEY CHECK (date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'),
+    counts jsonb NOT NULL, captured_at timestamptz NOT NULL,
+    CHECK ((captured_at AT TIME ZONE 'Asia/Makassar')::date::text = date),
+    CHECK ((captured_at AT TIME ZONE 'Asia/Makassar')::time >= TIME '08:00:00'
+      AND (captured_at AT TIME ZONE 'Asia/Makassar')::time < TIME '08:05:00')
   )`;
   await sql`INSERT INTO unspec_state (id) VALUES (1) ON CONFLICT DO NOTHING`;
   const state = await sql`SELECT seeded FROM unspec_state WHERE id = 1`;
@@ -83,6 +91,13 @@ export async function snapshot(date: string): Promise<Ticket[] | null> {
 }
 export interface SynchronizedSnapshot { date: string; count: number; counts: Record<string, number>; mapping: Record<string, Workzone>; capturedAt: string }
 
+export async function morningBaseline(date: string): Promise<MorningBaseline | null> {
+  if (!databaseConfigured()) return null;
+  await initialize();
+  const rows = await database()`SELECT date, counts, captured_at FROM unspec_morning_baselines WHERE date = ${date}`;
+  return rows[0] ? { date: rows[0].date, counts: rows[0].counts, capturedAt: new Date(rows[0].captured_at).toISOString() } : null;
+}
+
 export async function synchronizedAfter(minimumTime: string): Promise<SynchronizedSnapshot | null> {
   await initialize();
   const rows = await database()`SELECT p.date, p.counts, jsonb_array_length(p.tickets) AS count, s.mapping, s.synced_at
@@ -108,6 +123,10 @@ export async function synchronize(signal?: AbortSignal, requestTimeoutMs = 25000
         SELECT ${date}, ${JSON.stringify(tickets)}::jsonb, ${JSON.stringify(balances)}::jsonb, 'api'
         WHERE EXISTS (SELECT 1 FROM unspec_state WHERE id = 1 AND lock_token = ${token} AND lock_until > now())
         ON CONFLICT (date) DO UPDATE SET tickets = EXCLUDED.tickets, counts = EXCLUDED.counts, captured_at = now(), source = 'api' RETURNING date`,
+      ...(isMorningCapture(capturedAt) ? [sql`INSERT INTO unspec_morning_baselines (date, counts, captured_at)
+        SELECT ${date}, ${JSON.stringify(balances)}::jsonb, ${capturedAt}::timestamptz
+        WHERE EXISTS (SELECT 1 FROM unspec_state WHERE id = 1 AND lock_token = ${token} AND lock_until > now())
+        ON CONFLICT (date) DO NOTHING`] : []),
       sql`UPDATE unspec_state SET mapping = ${JSON.stringify(mapping)}::jsonb, synced_at = ${capturedAt}, error = NULL,
         source_total = ${sourceTotal}, lock_token = NULL, lock_until = NULL WHERE id = 1 AND lock_token = ${token} AND lock_until > now()`,
     ]);

@@ -15,6 +15,7 @@ function worker(overrides: Partial<BotWorkerDependencies> = {}) {
     claim: async () => '2026-11-06T00:00:00Z', fresh: async () => null,
     sync: async () => { syncs++;return { skipped: false, ...current }; },
     previous: async date => { assert.equal(date, '2026-11-05');return null; },
+    morning: async () => null,
     complete: async (_id, _owner, payload) => { completed.push(payload); },
     fail: async (_id, _owner, code) => { failures.push(code); }, pause: async () => {}, ...overrides,
   };
@@ -56,4 +57,12 @@ test('transient upstream changes are retried within the same worker before repor
   } });
   await runBotRequest('tg-test-12345', retry.deps);
   assert.equal(attempts, 2);assert.equal(retry.completed.length, 1);assert.equal(retry.failures.length, 0);
+});
+
+test('background report preserves the independent morning baseline in its frozen result', async () => {
+  const run = worker({ morning: async date => ({ date, capturedAt: '2026-11-06T00:00:10Z', counts: { ANT: 3 } }) });
+  await runBotRequest('tg-test-morning', run.deps);
+  assert.equal(run.completed[0]!.current.total, 2);
+  assert.equal(run.completed[0]!.morning!.total, 3);
+  assert.equal(run.completed[0]!.morning!.capturedAt, '2026-11-06T00:00:10Z');
 });
