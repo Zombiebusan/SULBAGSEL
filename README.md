@@ -47,6 +47,12 @@ Setelah mengubah environment variables di Vercel, lakukan redeploy.
 
 ## Sumber data dan filter
 
+### Integrasi bot Telegram UNSPEC
+
+Endpoint `POST /api/bot/unspec` disediakan untuk KKP-BOT. Header `Authorization: Bearer <UNSPEC_BOT_API_TOKEN>` wajib, dengan token minimal 32 karakter di environment Production Vercel. Bot menggunakan URL endpoint serta token yang sama melalui `UNSPEC_API_URL` dan `UNSPEC_API_TOKEN`.
+
+Endpoint mengambil data API lengkap terlebih dahulu (batas pengambilan sumber 38 detik), lalu mengembalikan agregat seluruh STO Sulbagsel untuk hari ini WITA dan tepat tanggal kemarin. Respons hanya berisi hitungan dan metadata tanggal, tanpa identitas pelanggan. Saat sinkronisasi sedang berjalan endpoint memberi HTTP 409; jika pengambilan gagal memberi HTTP 503. Data lama tidak dikembalikan sebagai hasil pengambilan live yang sukses. Integrasi ini tidak mengaktifkan cron atau polling otomatis dashboard.
+
 - Tiket: `https://monica.pamasuka.id/android/android/tiket_bar_unspec.php`
 - Mapping: `https://monica.pamasuka.id/android/android/get_workzone_filter.php`
 - Mapping JSON lokal dan mapping HTML disertakan sebagai dokumentasi/data referensi. Sinkronisasi live menggunakan mapping API; jika mapping live gagal, seluruh sinkronisasi dibatalkan dan data terakhir dipertahankan.

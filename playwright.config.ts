@@ -10,6 +10,7 @@ export default defineConfig({
       NEXT_DIST_DIR: '.next-browser',
       SESSION_SECRET: 'local-browser-test-session-secret-32-characters',
       AUTH_USERNAME: 'Sulbagsel', DATABASE_URL: '',
+      UNSPEC_BOT_API_TOKEN: 'browser-test-only-integration-token-32-chars',
       AUTH_PASSWORD_HASH: 'test-salt:'+scryptSync('browser-test-password', 'test-salt', 64).toString('hex'),
     },
   },

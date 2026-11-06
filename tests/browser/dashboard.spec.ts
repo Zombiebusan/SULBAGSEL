@@ -7,6 +7,7 @@ test('login, seluruh menu referensi, filter dan logout berfungsi', async ({ page
   expect((await request.get('/api/dashboard')).status()).toBe(401);
   expect((await request.get('/api/tickets?date=2026-11-04')).status()).toBe(401);
   expect((await request.get('/api/cron/sync')).status()).toBe(401);
+  expect((await request.post('/api/bot/unspec', { headers: { Authorization: 'Bearer wrong-token' } })).status()).toBe(401);
   await page.goto('/dashboard');
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('MONITORING UNSPEC SULBAGSEL');

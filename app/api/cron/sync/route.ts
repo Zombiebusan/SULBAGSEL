@@ -8,7 +8,10 @@ export async function GET(request: Request) {
   const actual = request.headers.get('authorization') || '';
   const a = Buffer.from(actual), b = Buffer.from(`Bearer ${expected}`);
   if (!expected || a.length !== b.length || !timingSafeEqual(a, b)) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  try { return Response.json({ ok: true, ...await synchronize() }); }
+  try {
+    const result = await synchronize();
+    return Response.json(result.skipped ? { ok: true, skipped: true } : { ok: true, skipped: false, date: result.date, count: result.count });
+  }
   catch (error) {
     console.error('Cron:', error instanceof Error ? error.message : error);
     return Response.json({ error: 'Sinkronisasi gagal; snapshot sebelumnya dipertahankan.' }, { status: 503 });

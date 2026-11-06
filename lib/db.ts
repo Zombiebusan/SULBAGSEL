@@ -75,24 +75,27 @@ export async function snapshot(date: string): Promise<Ticket[] | null> {
   const rows = await database()`SELECT tickets FROM unspec_snapshots WHERE date = ${date}`;
   return rows[0]?.tickets ?? null;
 }
-export async function synchronize() {
+export async function synchronize(signal?: AbortSignal) {
   await initialize();
   const sql = database(), token = randomUUID();
   const lease = await sql`UPDATE unspec_state SET lock_token = ${token}, lock_until = now() + interval '240 seconds'
     WHERE id = 1 AND (lock_until IS NULL OR lock_until < now()) RETURNING id`;
-  if (!lease.length) return { skipped: true };
+  if (!lease.length) return { skipped: true as const };
   try {
-    const { mapping, tickets, sourceTotal } = await fetchComplete();
-    const date = witaDate();
-    await sql.transaction([
+    const { mapping, tickets, sourceTotal } = await fetchComplete(signal);
+    signal?.throwIfAborted();
+    const capturedAt = new Date().toISOString(), date = witaDate(new Date(capturedAt));
+    const balances = counts(tickets);
+    const [written] = await sql.transaction([
       sql`INSERT INTO unspec_snapshots (date, tickets, counts, source)
-        SELECT ${date}, ${JSON.stringify(tickets)}::jsonb, ${JSON.stringify(counts(tickets))}::jsonb, 'api'
+        SELECT ${date}, ${JSON.stringify(tickets)}::jsonb, ${JSON.stringify(balances)}::jsonb, 'api'
         WHERE EXISTS (SELECT 1 FROM unspec_state WHERE id = 1 AND lock_token = ${token} AND lock_until > now())
-        ON CONFLICT (date) DO UPDATE SET tickets = EXCLUDED.tickets, counts = EXCLUDED.counts, captured_at = now(), source = 'api'`,
-      sql`UPDATE unspec_state SET mapping = ${JSON.stringify(mapping)}::jsonb, synced_at = now(), error = NULL,
+        ON CONFLICT (date) DO UPDATE SET tickets = EXCLUDED.tickets, counts = EXCLUDED.counts, captured_at = now(), source = 'api' RETURNING date`,
+      sql`UPDATE unspec_state SET mapping = ${JSON.stringify(mapping)}::jsonb, synced_at = ${capturedAt}, error = NULL,
         source_total = ${sourceTotal}, lock_token = NULL, lock_until = NULL WHERE id = 1 AND lock_token = ${token} AND lock_until > now()`,
     ]);
-    return { skipped: false, date, count: tickets.length };
+    if (!written.length) throw new Error('Lease sinkronisasi berakhir sebelum snapshot disimpan.');
+    return { skipped: false as const, date, count: tickets.length, counts: balances, mapping, capturedAt };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Sinkronisasi gagal.';
     await sql`UPDATE unspec_state SET error = ${message}, lock_token = NULL, lock_until = NULL WHERE id = 1 AND lock_token = ${token}`;
