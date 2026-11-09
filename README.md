@@ -4,9 +4,15 @@ Dashboard Next.js untuk Vercel, dengan login, pengambilan data terbaru saat hala
 
 ## Navigasi dashboard
 
-Menu awal tertutup. Klik logo **U** pada header untuk membuka panel menu; klik lagi, klik di luar panel, atau tekan Escape untuk menutup. Memilih halaman otomatis menutup menu tanpa mereset filter. Panel mengambang sehingga dashboard tetap menggunakan lebar penuh. Badge target pada header memakai ikon 🎯. Status pembaruan, mode siang/malam, dan tombol Keluar tersedia di menu. Tombol dapat dioperasikan lewat keyboard dan animasi mengikuti preferensi reduced motion.
+Menu berupa **sidebar permanen di sisi kiri**, tetap terlihat ketika dashboard digulir dan tidak memiliki tombol tutup. Area dashboard berada di sebelah kanan agar tidak tertutup menu. Pada layar kecil sidebar dibuat lebih ramping. Logo **U** hanya ada di sidebar, dengan aksen biru mengikuti palet dashboard. Badge target memakai ikon 🎯. Status pembaruan, mode siang/malam, dan tombol Keluar tersedia di sidebar. Perpindahan halaman tidak mereset filter dan dapat dioperasikan lewat keyboard.
 
 Rincian Tabel IMJAS memiliki filter Branch dan bulan khusus tabel, terpisah dari filter progres harian. Seluruh tabel (performansi Branch, rekap, detail tiket, ringkasan bulanan Branch & Service Area, dan IMJAS) memiliki header kolom yang tetap terlihat saat isi tabel digulir.
+
+### Unduh dashboard HTML
+
+Setelah login dan masuk ke **`/dashboard`**, tambahkan **`/export`** di belakang alamat menjadi **`/dashboard/export`** (contoh: `https://underspec-sulbagsel.vercel.app/dashboard/export`). Browser langsung mengunduh `UNSPEC-Sulbagsel-<waktu>.html` dengan style dashboard yang sama, snapshot terbaru yang tersimpan beserta histori dan detail tiket. Alamat `/eksport` juga tetap tersedia. Ekspor tidak memicu sinkronisasi API baru.
+
+File dapat dibuka tanpa internet: navigasi, filter, grafik, detail tiket, cetak/PDF, dan mode siang/malam tetap tersedia. Waktu ekspor dan pembaruan data ditampilkan pada sidebar. Isi file tetap mengikuti data saat diekspor; unduh kembali untuk mendapat pembaruan berikutnya. Impor ke database dan logout tidak tersedia pada file offline.
 
 ## Menjalankan lokal
 

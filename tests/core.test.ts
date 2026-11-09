@@ -70,3 +70,21 @@ test('tampilan pertama memakai snapshot Neon terbaru, bukan saldo bawaan referen
   assert.equal(initial.snapshots['2026-11-05'].length, 1119);
   assert.equal(initial.snapshots['2026-11-04'].length, 411);
 });
+
+test('ekspor menyimpan detail snapshot terbaru dan mengamankan teks dalam script HTML', async () => {
+  const { initial } = await reference();
+  const ticket = { ...normalizeTickets(initial.snapshots['2026-11-04'], initial.mapping)[0], INCIDENT: 'INC-EXPORT', SUMMARY: '</script><script>unexpected()</script>' };
+  const result = await dashboardHtml({
+    snapshots: { '2026-12-02': { [ticket.WORKZONE]: 1 } }, mapping: initial.mapping,
+    syncedAt: '2026-12-02T03:00:00Z', error: null, persisted: true,
+  }, { snapshots: { '2026-12-02': [ticket] }, exportedAt: '2026-12-02T04:00:00Z' });
+  const scripts = [...result.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+  assert.equal(scripts.length, 4);
+  for (const script of scripts) assert.doesNotThrow(() => new Script(script[1]));
+  const seed = scripts.find(match => match[1].startsWith('const INITIAL = '))![1];
+  const saved = new Script(seed+';INITIAL').runInNewContext();
+  assert.deepEqual(Object.keys(saved.snapshots), ['2026-12-02']);
+  assert.equal(saved.snapshots['2026-12-02'][0].INCIDENT, 'INC-EXPORT');
+  assert.equal(saved.snapshots['2026-12-02'][0].SUMMARY, ticket.SUMMARY);
+  assert.ok(!result.includes('<script>unexpected()'));
+});

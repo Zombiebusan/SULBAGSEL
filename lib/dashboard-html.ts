@@ -2,8 +2,8 @@ import { initialSpan, reference } from './reference';
 import { normalizeTickets } from './normalize';
 import { clientRuntime } from './dashboard-runtime';
 import { dashboardAppearance, themeInit } from './dashboard-appearance';
-import { hamburgerNavigation, navigationStyle } from './dashboard-navigation';
-import type { Workzone } from './types';
+import { sidebarNavigation, navigationStyle } from './dashboard-navigation';
+import type { Ticket, Workzone } from './types';
 
 export type DashboardBootstrap = {
   snapshots: Record<string, Record<string, number>>;
@@ -63,15 +63,17 @@ function renderBalanceChange(current,previous){
 }
 `;
 
-export async function dashboardHtml(bootstrap?: DashboardBootstrap) {
+export interface DashboardExport { snapshots: Record<string, Ticket[]>; exportedAt: string }
+
+export async function dashboardHtml(bootstrap?: DashboardBootstrap, offline?: DashboardExport) {
   const { html, initial } = await reference();
   // Keep initial HTML lightweight; full ticket details are fetched only for the selected date.
   const compact = {
     ...initial,
     mapping: { ...initial.mapping, ...bootstrap?.mapping },
-    snapshots: bootstrap
+    snapshots: offline?.snapshots ?? (bootstrap
       ? Object.fromEntries(Object.entries(bootstrap.snapshots).map(([date, counts]) => [date, Object.entries(counts).flatMap(([WORKZONE, count]) => Array.from({ length: count }, () => ({ WORKZONE })))]))
-      : Object.fromEntries(Object.entries(initial.snapshots).map(([date, rows]) => [date, normalizeTickets(rows, initial.mapping).map(r => ({ WORKZONE: r.WORKZONE }))])),
+      : Object.fromEntries(Object.entries(initial.snapshots).map(([date, rows]) => [date, normalizeTickets(rows, initial.mapping).map(r => ({ WORKZONE: r.WORKZONE }))]))),
   };
   const { start } = initialSpan(html);
   const end = html.indexOf('</script>', start);
@@ -128,7 +130,8 @@ export async function dashboardHtml(bootstrap?: DashboardBootstrap) {
   result = result.replace('</head>', '<style>#page-progress .branch-performance .tablewrap{overflow:visible!important;width:100%;min-width:0}#branchPerformanceTable{display:table!important;width:100%!important;min-width:0!important;table-layout:fixed;white-space:normal!important;border-collapse:collapse}#branchPerformanceTable th,#branchPerformanceTable td{border:1px solid #cbd5e1!important;padding:9px 5px!important;font-size:clamp(9px,.75vw,12px);line-height:1.4;white-space:normal!important;overflow-wrap:anywhere;vertical-align:middle}#branchPerformanceTable th{font-size:clamp(9px,.7vw,11px);letter-spacing:0;text-align:center}#branchPerformanceTable th:first-child,#branchPerformanceTable td:first-child{width:12%;text-align:left}#branchPerformanceTable th:nth-child(2),#branchPerformanceTable th:nth-child(3){width:7%}#branchPerformanceTable th:nth-child(4),#branchPerformanceTable th:nth-child(5){width:10%}#branchPerformanceTable th:nth-child(6){width:7%}#branchPerformanceTable th:nth-child(7){width:15%}#branchPerformanceTable th:nth-child(8){width:14%}#branchPerformanceTable th:nth-child(9),#branchPerformanceTable th:nth-child(10){width:9%}#branchPerformanceTable th:nth-child(5),#branchPerformanceTable td:nth-child(5){position:static!important;left:auto!important;box-shadow:none!important}#branchPerformanceTable .saldo{max-width:100%;padding:2px 4px;white-space:normal;overflow-wrap:anywhere}#branchPerformanceTable tr.regional-total td{border-top:2px solid #18364b!important}@media(max-width:760px){#branchPerformanceTable th,#branchPerformanceTable td{padding:6px 2px!important;font-size:9px}#branchPerformanceTable .saldo{padding:2px 0}}</style></head>');
   result = result.replace('</head>', '<style>.runtime-status{font-size:11px;line-height:1.5;overflow-wrap:anywhere}.runtime-status.error{color:#c72e43}.logout-button{width:100%;font-size:11px;margin-top:12px}#cards .balance-value{display:flex;align-items:center;justify-content:space-between;gap:6px}.balance-trend-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 30px;width:30px;height:30px;border-radius:8px}.balance-trend-icon.green{background:#e9f6ef}.balance-trend-icon.red{background:#fff0f2}.balance-trend-icon.muted{background:#f1f5f9}.balance-trend-icon svg{display:block}.balance-change{font-size:11px;line-height:1.4}.balance-change strong{display:block;font-weight:650}.balance-change small{display:block;color:var(--muted);font-size:10px;margin-top:2px}@media print{.logout-button{display:none!important}}</style></head>');
   result = result.replace('</body>', '<script>const bootstrapState='+JSON.stringify(bootstrap ?? null).replace(/</g, '\\u003c')+';\n'+clientRuntime+'</script></body>');
-  result = result.replace('</head>', '<script>'+themeInit+'</script><style>'+dashboardAppearance+'</style></head>');
-  result = hamburgerNavigation(result).replace('</head>', '<style>'+navigationStyle+'</style></head>');
+  result = result.replace('</head>', '<script>const offlineExport='+JSON.stringify(offline ? { exportedAt: offline.exportedAt } : null).replace(/</g, '\\u003c')+';'+themeInit+'</script><style>'+dashboardAppearance+'</style></head>');
+  if (offline) result = result.replace('function todayWita(){', 'function todayWita(){if(offlineExport)return new Intl.DateTimeFormat(\'en-CA\',{timeZone:\'Asia/Makassar\',year:\'numeric\',month:\'2-digit\',day:\'2-digit\'}).format(new Date(offlineExport.exportedAt));');
+  result = sidebarNavigation(result).replace('</head>', '<style>'+navigationStyle+'</style></head>');
   return result;
 }

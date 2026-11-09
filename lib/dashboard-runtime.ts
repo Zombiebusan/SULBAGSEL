@@ -1,7 +1,4 @@
-import { navigationRuntime } from './dashboard-navigation';
-
 export const clientRuntime = String.raw`
-${navigationRuntime}
 // Extend the reference dashboard without changing its navigation or component layout.
 const statusNode=document.querySelector('.sidebar-note');
 let achievedGaugePercent=0;
@@ -120,7 +117,7 @@ function showSyncStatus(state){
  const time=state.syncedAt?new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Makassar',dateStyle:'short',timeStyle:'medium'}).format(new Date(state.syncedAt))+' WITA':'belum sinkron';
  setStatus(state.error?(state.error+' Terakhir: '+time):'Pembaruan terakhir · '+time,!!state.error);
 }
-function jsonFetch(url,options){return fetch(url,options).then(async r=>{if(r.status===401){location.assign('/login');throw Error('Sesi berakhir.')}const body=await r.json();if(!r.ok)throw Error(body.error||'Permintaan gagal.');return body})}
+function jsonFetch(url,options){if(offlineExport)return Promise.reject(Error('File HTML ini adalah snapshot offline.'));return fetch(url,options).then(async r=>{if(r.status===401){location.assign('/login');throw Error('Sesi berakhir.')}const body=await r.json();if(!r.ok)throw Error(body.error||'Permintaan gagal.');return body})}
 function updatePeriodLabels(){
  const months=periodMonths(),last=months.at(-1),range=monthTitle(months[0])+'–'+monthTitle(last);
  $('periodCaption').textContent=range;$('monthlyHeading').textContent='Pencapaian UNSPEC bulanan · '+range;
@@ -143,6 +140,7 @@ showDetails=async function(d,codes,label,scroll=true){
  }catch(e){if(request===detailRequest){$('orders').innerHTML='<tr><td colspan="9">'+esc(e.message)+'</td></tr>';$('detailCount').textContent=d+' · Detail belum tersedia';}}
 };
 async function refresh(sync=true){
+  if(offlineExport)return;
  if(pendingPoll)return;pendingPoll=true;setLoading(true);setStatus('Memperbarui data…');
  try{
    const state=await jsonFetch('/api/dashboard',{method:sync?'POST':'GET'}),oldDate=$('date').value,oldLatest=dates().at(-1);
@@ -184,6 +182,14 @@ backup=async function(){
    download('unspec-riwayat.json',JSON.stringify({...data,snapshots}),'application/json');setStatus('Cadangan berhasil diunduh.');
  }catch(e){setStatus(e.message,true)}
 };
+if(offlineExport){
+ showDetails=originalShowDetails;logout.hidden=true;
+ for(const id of ['import','file','uploadDate','restore']){const control=$(id);if(control){control.disabled=true;control.title='Impor tersedia pada dashboard online.'}}
+ backup=()=>download('unspec-riwayat.json',JSON.stringify(data),'application/json');
+}
 applyCardGradients();updatePeriodLabels();drawChart();showDetails($('date').value,filteredCodes($('branch').value),scopeLabel(),false);
-if(bootstrapState){showSyncStatus(bootstrapState);refresh(true)}else refresh(false).then(()=>refresh(true));
+if(offlineExport){
+ const time=value=>new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Makassar',dateStyle:'short',timeStyle:'medium'}).format(new Date(value))+' WITA';
+ setStatus('Snapshot offline · Diekspor '+time(offlineExport.exportedAt)+(bootstrapState?.syncedAt?' · Data terakhir '+time(bootstrapState.syncedAt):' · Histori referensi'));
+}else if(bootstrapState){showSyncStatus(bootstrapState);refresh(true)}else refresh(false).then(()=>refresh(true));
 `;

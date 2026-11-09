@@ -1,24 +1,54 @@
 import { test, expect, type Page } from '@playwright/test';
 import { dashboardHtml, type DashboardBootstrap } from '../../lib/dashboard-html';
+import { pathToFileURL } from 'node:url';
 
-async function finishMenuAnimation(page: Page) {
-  await page.locator('.hamburger-layout').evaluate(async layout => {
-    const animations = [...layout.getAnimations(), ...layout.querySelector('.sidebar')!.getAnimations({ subtree: true })]
-      .filter(animation => animation.effect?.getComputedTiming().endTime !== Infinity);
-    await Promise.all(animations.map(animation => animation.finished.catch(() => {})));
-  });
-}
 async function openNavigation(page: Page) {
-  const toggle = page.locator('#menuToggle');
-  if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-  await finishMenuAnimation(page);
+  await expect(page.locator('.sidebar')).toBeVisible();
 }
 async function selectWorkspace(page: Page, workspace: string) {
   await openNavigation(page);
   await page.locator(`.nav-item[data-page="${workspace}"]`).click();
-  await expect(page.locator('#menuToggle')).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('.sidebar')).toBeVisible();
 }
+
+test('/dashboard/export mengunduh HTML mandiri dengan navigasi, filter dan detail tiket tanpa jaringan', async ({ page, request, context }) => {
+  const unauthorized = await request.get('/dashboard/export', { maxRedirects: 0 });
+  expect(unauthorized.status()).toBe(302);
+  expect(unauthorized.headers().location).toContain('/login');
+  await page.goto('/login');
+  await page.getByLabel('Username').fill('Sulbagsel');
+  await page.getByLabel('Password').fill('browser-test-password');
+  await page.getByRole('button', { name: 'Masuk' }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  const downloadPromise = page.waitForEvent('download');
+  await page.evaluate(() => { const link = document.createElement('a');link.href=location.pathname+'/export';document.body.append(link);link.click(); });
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^UNSPEC-Sulbagsel-.*\.html$/);
+  const file = test.info().outputPath('dashboard-offline.html');
+  await download.saveAs(file);
+  await context.setOffline(true);
+  const errors: string[] = [], network: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('request', request => { if (/^https?:/.test(request.url())) network.push(request.url()); });
+  await page.goto(pathToFileURL(file).href);
+  await expect(page.locator('#syncStatus')).toContainText('Snapshot offline');
+  await expect(page.locator('#cards .card')).toHaveCount(7);
+  await expect(page.locator('#orders')).not.toContainText('Memuat detail');
+  await expect(page.locator('#orders tr').first().locator('td').first()).not.toBeEmpty();
+  await expect(page.getByRole('button', { name: 'Keluar', exact: true })).toBeHidden();
+  await expect(page.locator('#import')).toBeDisabled();
+  await page.locator('#branch').selectOption('MAKASSAR');
+  await selectWorkspace(page, 'monthly');
+  await expect(page.locator('#monthlyTable tr')).not.toHaveCount(0);
+  await selectWorkspace(page, 'business');
+  await page.locator('#imjasBranchFilter').selectOption('BONE');
+  await page.locator('#imjasMonthFilter').selectOption('2026-10');
+  await expect(page.locator('#imjasTable tr').first()).toContainText('BONE');
+  await page.getByRole('button', { name: 'Mode Malam', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  expect(network).toEqual([]);
+  expect(errors).toEqual([]);
+});
 
 test('login, seluruh menu referensi, filter dan logout berfungsi', async ({ page, request }) => {
   const errors: string[] = [];
@@ -129,7 +159,7 @@ test('login, seluruh menu referensi, filter dan logout berfungsi', async ({ page
   expect(errors).toEqual([]);
 });
 
-test('logo hamburger membuka menu beranimasi, mendukung keyboard dan mobile tanpa mereset filter', async ({ page }) => {
+test('sidebar permanen tetap di kiri saat scroll dan mendukung mobile tanpa mereset filter', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   const state: DashboardBootstrap = {
@@ -141,33 +171,33 @@ test('logo hamburger membuka menu beranimasi, mendukung keyboard dan mobile tanp
   await page.route('**/api/dashboard', route => route.fulfill({ json: state }));
   await page.route('**/api/tickets?*', route => route.fulfill({ json: { tickets: [{ INCIDENT: 'INC-TEST', WORKZONE: 'ANT' }] } }));
   await page.goto('/dashboard');
-  const toggle = page.getByRole('button', { name: 'Buka menu UNSPEC', exact: true });
-  await expect(toggle).toBeVisible();
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-  await expect(page.locator('#sidebarMenu')).toBeHidden();
-  await expect(page.locator('header #menuToggle .brand-mark')).toHaveText('U');
+  await expect(page.locator('#menuToggle')).toHaveCount(0);
+  await expect(page.locator('#sidebarMenu')).toBeVisible();
+  await expect(page.locator('header .brand-mark')).toHaveCount(0);
+  await expect(page.locator('.sidebar .brand-mark')).toHaveText('U');
   await expect(page.locator('header .target-icon')).toHaveText('🎯');
   const contentWidth = await page.locator('.app-content').evaluate(el => el.getBoundingClientRect().width);
   expect(contentWidth).toBe(await page.locator('.app-layout').evaluate(el => el.getBoundingClientRect().width));
-  expect(await page.locator('#sidebarMenu').evaluate(menu => (menu as HTMLElement).inert)).toBeTruthy();
-  await toggle.focus();await page.keyboard.press('Tab');
-  await expect(page.locator('#date')).toBeFocused();
-  await page.screenshot({ path: test.info().outputPath('hamburger-closed.png') });
+  expect(await page.locator('#sidebarMenu').evaluate(menu => (menu as HTMLElement).inert)).toBeFalsy();
+  await page.evaluate(() => window.scrollTo(0, 600));
+  expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0);
+  const sidebarBox = (await page.locator('.sidebar').boundingBox())!;
+  expect(sidebarBox.x).toBe(0);expect(sidebarBox.y).toBe(0);
+  expect(sidebarBox.height).toBe(page.viewportSize()!.height);
+  expect((await page.locator('.app-content').boundingBox())!.x).toBeGreaterThanOrEqual(sidebarBox.width);
+  await page.screenshot({ path: test.info().outputPath('sidebar-fixed.png') });
   await page.locator('#branch').selectOption('MAKASSAR');
   await openNavigation(page);
   await expect(page.locator('#sidebarMenu .nav-item')).toHaveCount(3);
   await expect(page.locator('#sidebarMenu .nav-item').first()).toBeVisible();
   await expect(page.locator('#sidebarMenu .theme-button')).toBeVisible();
   await expect(page.locator('#sidebarMenu .logout-button')).toBeVisible();
-  await page.screenshot({ path: test.info().outputPath('hamburger-open.png') });
   await page.keyboard.press('Escape');
-  await expect(page.locator('#menuToggle')).toHaveAttribute('aria-expanded', 'false');
-  await expect(page.locator('#menuToggle')).toBeFocused();
+  await expect(page.locator('.sidebar')).toBeVisible();
+  await page.locator('.nav-item[data-page="monthly"]').focus();
   await page.keyboard.press('Enter');
-  await expect(page.locator('#menuToggle')).toHaveAttribute('aria-expanded', 'true');
-  await page.locator('.nav-item[data-page="monthly"]').click();
   await expect(page.locator('#page-monthly')).toBeVisible();
-  await expect(page.locator('#menuToggle')).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('.sidebar')).toBeVisible();
   await expect(page.locator('#branch')).toHaveValue('MAKASSAR');
   const monthlyWrap = page.locator('.tablewrap').filter({ has: page.locator('#monthlyTable') });
   await monthlyWrap.scrollIntoViewIfNeeded();
@@ -186,11 +216,10 @@ test('logo hamburger membuka menu beranimasi, mendukung keyboard dan mobile tanp
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
   await page.getByRole('button', { name: 'Mode Malam', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await finishMenuAnimation(page);
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.screenshot({ path: test.info().outputPath('hamburger-mobile-dark.png') });
+  await page.screenshot({ path: test.info().outputPath('sidebar-mobile-dark.png') });
   await page.keyboard.press('Escape');
-  await expect(page.locator('#menuToggle')).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('.sidebar')).toBeVisible();
   await page.emulateMedia({ media: 'print' });
   await expect(page.locator('.sidebar')).toBeHidden();
   await expect(page.locator('#page-progress')).toBeVisible();

@@ -1,51 +1,38 @@
-export function hamburgerNavigation(html: string): string {
-  const originalBrand = '<div class="sidebar-brand"><span class="brand-mark">U</span><div><strong>UNSPEC</strong><small>EXECUTIVE SULBAGSEL</small></div></div>';
-  const result = html.replace('class="app-layout"', 'class="app-layout hamburger-layout"')
-    .replace(originalBrand, '<button type="button" class="sidebar-brand menu-toggle" id="menuToggle" aria-expanded="false" aria-controls="sidebarMenu" aria-label="Buka menu UNSPEC" title="Buka menu UNSPEC"><span class="brand-mark" aria-hidden="true">U</span><span class="sidebar-brand-copy"><strong>UNSPEC</strong><small>EXECUTIVE SULBAGSEL</small></span><span class="hamburger-glyph" aria-hidden="true"><span></span><span></span><span></span></span></button><div id="sidebarMenu" class="sidebar-menu" aria-hidden="true" inert><div id="sidebarMenuInner" class="sidebar-menu-inner">')
-    .replace('</aside>', '</div></div></aside>');
-  const toggle = result.match(/<button type="button" class="sidebar-brand menu-toggle"[\s\S]*?<\/button>/)?.[0] ?? '';
-  const headerToggle = toggle.replace('<span class="hamburger-glyph" aria-hidden="true"><span></span><span></span><span></span></span>', '');
-  return result.replace(toggle, '').replace('<header><div>', '<header><div class="header-identity">'+headerToggle+'<div>')
-    .replace('</small></div><span class="badge">', '</small></div></div><span class="badge">')
+export function sidebarNavigation(html: string): string {
+  return html.replace('class="app-layout"', 'class="app-layout sidebar-layout"')
+    .replace('</aside>', '</div></div></aside>')
+    .replace('<div class="nav-caption">', '<div id="sidebarMenu" class="sidebar-menu"><div id="sidebarMenuInner" class="sidebar-menu-inner"><div class="nav-caption">')
     .replace('<span class="badge">Target', '<span class="badge"><span class="target-icon" aria-hidden="true">🎯</span>Target');
 }
 
-export const navigationRuntime = String.raw`
-const navigationLayout=document.querySelector('.hamburger-layout');
-const menuToggle=$('menuToggle'),sidebarMenu=$('sidebarMenu');
-const dashboardHeader=document.querySelector('main>header');
-if(dashboardHeader){const measureHeader=()=>document.documentElement.style.setProperty('--dashboard-header-height',dashboardHeader.getBoundingClientRect().height+'px');new ResizeObserver(measureHeader).observe(dashboardHeader);measureHeader()}
-function setMenuOpen(open,returnFocus=false){
- if(!navigationLayout||!menuToggle||!sidebarMenu)return;
- navigationLayout.classList.toggle('menu-open',open);
- menuToggle.setAttribute('aria-expanded',String(open));
- menuToggle.setAttribute('aria-label',open?'Tutup menu UNSPEC':'Buka menu UNSPEC');
- menuToggle.title=open?'Tutup menu UNSPEC':'Buka menu UNSPEC';
- sidebarMenu.setAttribute('aria-hidden',String(!open));sidebarMenu.inert=!open;
- document.querySelector('.sidebar')?.setAttribute('aria-hidden',String(!open));
- if(!open&&returnFocus)menuToggle.focus({preventScroll:true});
-}
-if(menuToggle&&sidebarMenu){
- menuToggle.addEventListener('click',()=>setMenuOpen(menuToggle.getAttribute('aria-expanded')!=='true'));
- sidebarMenu.addEventListener('click',event=>{if(event.target.closest('.nav-item[data-page]'))setMenuOpen(false,true)});
- document.addEventListener('keydown',event=>{if(event.key==='Escape'&&menuToggle.getAttribute('aria-expanded')==='true'){event.preventDefault();setMenuOpen(false,true)}});
- document.addEventListener('click',event=>{if(menuToggle.getAttribute('aria-expanded')==='true'&&!event.composedPath().some(node=>node===menuToggle||node===sidebarMenu))setMenuOpen(false)});
- setMenuOpen(false);
-}
-`;
-
-const dashboardLayoutStyle = String.raw`
+export const navigationStyle = String.raw`
 @media screen {
+ :root{--sidebar-width:220px}
  html,body{overflow-x:clip}
- .header-identity{display:flex;align-items:center;gap:14px;min-width:0}
- header .menu-toggle{position:relative;display:flex;align-items:center;justify-content:center;flex:0 0 48px;width:48px;height:48px;min-height:48px;padding:4px;border:1px solid #ffffff55;background:#ffffff16;border-radius:12px;cursor:pointer}
- header .menu-toggle:hover{background:#ffffff30}
- header .menu-toggle .brand-mark{display:grid;place-items:center;width:36px;height:36px;background:transparent;color:#fff;font-size:28px;font-weight:800}
- header .sidebar-brand-copy{display:none!important}
- header .hamburger-glyph{right:0;bottom:0;color:#18364b;background:#fff}
- .hamburger-layout.app-layout,.hamburger-layout.app-layout.menu-open{display:block;grid-template-columns:minmax(0,1fr)}
- .hamburger-layout>.sidebar{position:fixed;top:calc(var(--dashboard-header-height,130px) + 12px);left:20px;z-index:45;width:min(280px,calc(100vw - 40px));max-height:calc(100dvh - var(--dashboard-header-height,130px) - 28px);overflow:auto;box-shadow:0 16px 48px #0003;visibility:hidden;opacity:0;transform:translateX(-12px);transition:opacity .2s,transform .2s,visibility .2s}
- .hamburger-layout.menu-open>.sidebar{visibility:visible;opacity:1;transform:translateX(0)}
+ body>main{width:calc(100% - var(--sidebar-width));margin-left:var(--sidebar-width);margin-right:0;max-width:none}
+ .sidebar-layout.app-layout{display:block;margin-top:20px;--sidebar-bg:#fff;--sidebar-line:#e5eaf0;--sidebar-text:#294457;--sidebar-muted:#718394;--sidebar-soft:#f6f9fb;--sidebar-hover:#eef3f8}
+ html[data-theme="dark"] .sidebar-layout{--sidebar-bg:#171717;--sidebar-line:#363636;--sidebar-text:#e5e5e5;--sidebar-muted:#a3a3a3;--sidebar-soft:#242424;--sidebar-hover:#303030}
+ .sidebar-layout>.sidebar{position:fixed;inset:0 auto 0 0;z-index:45;display:block;width:var(--sidebar-width);height:100dvh;overflow-y:auto;overscroll-behavior:contain;border:0;border-right:1px solid var(--sidebar-line);border-radius:0;padding:20px 12px;background:var(--sidebar-bg);box-shadow:none;color:var(--sidebar-text);scrollbar-width:thin}
+ .sidebar-layout .sidebar-brand{padding:0 4px 24px;border-bottom:1px solid var(--sidebar-line);gap:10px}
+ .sidebar-layout .sidebar-brand .brand-mark{flex-shrink:0;background:#18364b;color:#fff;box-shadow:0 3px 15px #18364b40}
+ .sidebar-layout .sidebar-brand strong{color:var(--sidebar-text);font-size:14px}
+ .sidebar-layout .sidebar-brand small{color:var(--sidebar-muted);font-size:8px}
+ .sidebar-layout .nav-caption{color:var(--sidebar-muted);padding:22px 10px 10px}
+ .sidebar-layout .nav-item{display:flex;align-items:center;gap:9px;width:100%;margin:6px 0;padding:12px 9px;color:var(--sidebar-text);background:transparent;border:1px solid transparent;border-radius:8px;text-align:left}
+ .sidebar-layout .nav-item:hover{background:var(--sidebar-hover)}
+ .sidebar-layout .nav-item.active{background:#eaf2f8;border-color:#cfdeea;box-shadow:inset 3px 0 #18364b;color:#18364b}
+ .sidebar-layout .nav-item strong{font-size:10px;line-height:1.5}
+ .sidebar-layout .nav-item small{font-size:9px;color:var(--sidebar-muted)}
+ .sidebar-layout .nav-item.active small{color:var(--sidebar-muted)}
+ .sidebar-layout .nav-number{flex:0 0 25px;height:25px;background:var(--sidebar-soft);color:var(--sidebar-muted)}
+ .sidebar-layout .nav-item.active .nav-number{background:#dce9f3;color:#18364b}
+ html[data-theme="dark"] .sidebar-layout .nav-item.active{background:#303030;border-color:#525252;box-shadow:inset 3px 0 #a3a3a3;color:#e5e5e5}
+ html[data-theme="dark"] .sidebar-layout .nav-item.active .nav-number{background:#404040;color:#e5e5e5}
+ .sidebar-layout .sidebar-note{margin:24px 0 0;padding:10px;background:var(--sidebar-soft);color:var(--sidebar-muted)}
+ .sidebar-layout .runtime-status{color:var(--sidebar-muted)}
+ .sidebar-layout .runtime-status.error{color:var(--red)}
+ .sidebar-layout .theme-button,.sidebar-layout .logout-button{width:100%;background:var(--sidebar-soft);color:var(--sidebar-text);border-color:var(--sidebar-line);margin-top:12px}
+ .sidebar-layout .theme-button:hover,.sidebar-layout .logout-button:hover{background:var(--sidebar-hover)}
  header .badge{display:inline-flex;align-items:center;gap:8px}
  .target-icon{font-size:24px;line-height:1}
  main .tablewrap:has(table){max-height:65vh;overflow:auto!important;position:relative;scrollbar-gutter:stable}
@@ -53,47 +40,28 @@ const dashboardLayoutStyle = String.raw`
  main .tablewrap:has(table) thead{position:sticky;top:0;z-index:6}
  main .tablewrap:has(table) thead th{position:static!important;background:#18364b;color:#fff;box-shadow:0 1px 0 var(--line)}
  .imjas-table-toolbar{flex-wrap:wrap;gap:12px}
- @media(max-width:760px){.header-identity{gap:10px}header .menu-toggle{flex-basis:42px;width:42px;height:42px;min-height:42px}main>header h1{font-size:18px}header .badge{font-size:10px}.target-icon{font-size:20px}.hamburger-layout>.sidebar{left:12px;width:min(280px,calc(100vw - 24px))}}
-}
-@media print{header .menu-toggle{display:none}main .tablewrap:has(table){max-height:none!important;overflow:visible!important}main .tablewrap:has(table) thead{position:static}}
-`;
-
-export const navigationStyle = String.raw`
-@media screen {
- .hamburger-layout.app-layout{grid-template-columns:72px minmax(0,1fr);gap:16px;transition:grid-template-columns .26s cubic-bezier(.22,.61,.36,1)}
- .hamburger-layout.app-layout.menu-open{grid-template-columns:228px minmax(0,1fr)}
- .hamburger-layout>.sidebar{display:block;width:100%;min-width:0;padding:8px;overflow:clip}
- .sidebar .menu-toggle{position:relative;display:flex;align-items:center;gap:10px;width:100%;min-height:56px;margin:0;padding:8px;border:0;border-radius:9px;background:transparent;box-shadow:none;text-align:left;cursor:pointer}
- .sidebar .menu-toggle .brand-mark{display:grid;place-items:center;flex:0 0 36px;width:36px;height:36px;line-height:1}
- .sidebar .menu-toggle .sidebar-brand-copy{display:none;min-width:0;flex:1}
- .sidebar .menu-toggle .sidebar-brand-copy strong{display:block}
- .sidebar .menu-toggle .sidebar-brand-copy small{display:block;white-space:nowrap}
- .sidebar .menu-toggle:hover{background:#eef3f8}
- .hamburger-glyph{position:absolute;right:2px;bottom:4px;display:block;width:14px;height:16px;color:var(--ink);background:#fff;border-radius:3px}
- .hamburger-glyph>span{position:absolute;left:1px;right:1px;height:2px;border-radius:2px;background:currentColor;transition:transform .22s ease,opacity .18s ease}
- .hamburger-glyph>span:nth-child(1){top:3px}.hamburger-glyph>span:nth-child(2){top:7px}.hamburger-glyph>span:nth-child(3){top:11px}
- .menu-open .menu-toggle .hamburger-glyph{position:relative;right:auto;bottom:auto;flex:0 0 16px;width:16px;margin-left:auto;background:transparent}
- .menu-open .menu-toggle .sidebar-brand-copy{display:block}
- .menu-open .hamburger-glyph>span:nth-child(1){transform:translateY(4px) rotate(45deg)}
- .menu-open .hamburger-glyph>span:nth-child(2){opacity:0;transform:scaleX(.2)}
- .menu-open .hamburger-glyph>span:nth-child(3){transform:translateY(-4px) rotate(-45deg)}
- .sidebar-menu{display:grid;grid-template-rows:0fr;min-width:0;opacity:0;visibility:hidden;margin-top:0;transition:grid-template-rows .26s ease,opacity .18s ease,margin-top .26s ease,visibility 0s linear .26s}
- .sidebar-menu-inner{min-height:0;min-width:0;overflow:clip}
- .menu-open .sidebar-menu{grid-template-rows:1fr;opacity:1;visibility:visible;margin-top:8px;transition:grid-template-rows .26s ease,opacity .18s ease .07s,margin-top .26s ease,visibility 0s}
- .sidebar-menu-inner .nav-caption{padding-top:8px}
- .sidebar-menu-inner .theme-button,.sidebar-menu-inner .logout-button{width:100%}
- html[data-theme="dark"] .sidebar .menu-toggle:hover{background:#252525}
- html[data-theme="dark"] .hamburger-glyph{background:#171717}
- html[data-theme="dark"] .menu-open .hamburger-glyph{background:transparent}
  @media(max-width:760px){
-  .hamburger-layout.app-layout,.hamburger-layout.app-layout.menu-open{grid-template-columns:minmax(0,1fr);gap:14px}
-  .sidebar .menu-toggle{min-height:48px;padding:6px 8px}
-  .sidebar .menu-toggle .sidebar-brand-copy{display:block}
-  .sidebar .menu-toggle .hamburger-glyph{position:relative;right:auto;bottom:auto;flex:0 0 16px;width:16px;margin-left:auto;background:transparent}
-  .sidebar-menu-inner .nav-item{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:9px;text-align:left;min-height:58px;margin:4px 0;padding:10px}
-  .sidebar-menu-inner .nav-item strong{font-size:11px}.sidebar-menu-inner .nav-item small{font-size:10px}
-  .sidebar-menu-inner .theme-button,.sidebar-menu-inner .logout-button{margin-top:10px}
+  :root{--sidebar-width:112px}
+  body>main{padding:12px}
+  .sidebar-layout>.sidebar{padding:14px 6px}
+  .sidebar-layout .sidebar-brand{flex-direction:column;text-align:center;padding:0 2px 16px;gap:6px}
+  .sidebar-layout .sidebar-brand strong{font-size:11px}
+  .sidebar-layout .sidebar-brand small{font-size:6px;letter-spacing:0}
+  .sidebar-layout .nav-caption{font-size:8px;padding:16px 3px 8px}
+  .sidebar-layout .nav-item{flex-direction:column;align-items:flex-start;gap:5px;padding:9px 5px}
+  .sidebar-layout .nav-number{flex:0 0 auto;width:22px;height:22px}
+  .sidebar-layout .nav-item strong{font-size:9px;overflow-wrap:anywhere}
+  .sidebar-layout .nav-item small{font-size:8px}
+  .sidebar-layout .sidebar-note{padding:8px 5px;gap:5px}
+  .sidebar-layout .runtime-status{font-size:9px}
+  .sidebar-layout .theme-button,.sidebar-layout .logout-button{font-size:9px;padding:8px 4px;gap:4px}
+  .sidebar-layout .theme-button svg{width:13px;height:13px}
+  main>header{padding:12px}
+  main>header h1{font-size:16px;overflow-wrap:anywhere}
+  main>header .eyebrow{font-size:8px}
+  header .badge{font-size:10px}
+  .target-icon{font-size:20px}
  }
 }
-${dashboardLayoutStyle}
+@media print{body>main{width:100%;margin:0}.sidebar{display:none!important}main .tablewrap:has(table){max-height:none!important;overflow:visible!important}main .tablewrap:has(table) thead{position:static}}
 `;

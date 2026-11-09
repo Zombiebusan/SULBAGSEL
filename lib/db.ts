@@ -89,6 +89,29 @@ export async function snapshot(date: string): Promise<Ticket[] | null> {
   const rows = await database()`SELECT tickets FROM unspec_snapshots WHERE date = ${date}`;
   return rows[0]?.tickets ?? null;
 }
+
+export async function dashboardExportState() {
+  const { initial } = await reference();
+  if (!databaseConfigured()) {
+    const snapshots = Object.fromEntries(Object.entries(initial.snapshots).map(([date, rows]) => [date, normalizeTickets(rows, initial.mapping)]));
+    return { state: await dashboardState(), snapshots };
+  }
+  await initialize();
+  const sql = database();
+  const [rows, states] = await sql.transaction([
+    sql`SELECT date, tickets FROM unspec_snapshots ORDER BY date`,
+    sql`SELECT mapping, synced_at, error FROM unspec_state WHERE id = 1`,
+  ], { isolationLevel: 'RepeatableRead', readOnly: true });
+  const snapshots: Record<string, Ticket[]> = Object.fromEntries(rows.map(row => [row.date, row.tickets]));
+  return {
+    snapshots,
+    state: {
+      snapshots: Object.fromEntries(Object.entries(snapshots).map(([date, tickets]) => [date, counts(tickets)])),
+      mapping: states[0]?.mapping || initial.mapping,
+      syncedAt: states[0]?.synced_at ?? null, error: states[0]?.error ?? null, persisted: true,
+    },
+  };
+}
 export interface SynchronizedSnapshot { date: string; count: number; counts: Record<string, number>; mapping: Record<string, Workzone>; capturedAt: string }
 
 export async function morningBaseline(date: string): Promise<MorningBaseline | null> {
