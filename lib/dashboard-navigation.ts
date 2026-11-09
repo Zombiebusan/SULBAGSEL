@@ -94,6 +94,7 @@ export const navigationStyle = String.raw`
  .sidebar-layout.app-layout{margin-top:0;padding:20px 24px 24px}
  .sidebar-layout>.sidebar{padding:0;border-right:0}
  .sidebar-layout .sidebar-brand{display:flex;align-items:center;flex-direction:row;gap:10px;width:100%;min-height:var(--dashboard-header-height,140px);margin:0;padding:20px 14px;border:0;border-radius:0;background:#18364b;text-align:left;cursor:pointer}
+ .sidebar-layout .sidebar-brand{box-shadow:inset -1px 0 0 #fff}
  .sidebar-layout .sidebar-brand:hover{background:#18364b}
  .sidebar-layout .sidebar-brand strong{color:#fff;font-size:clamp(22px,2.05vw,32px);line-height:1.25;font-weight:750;letter-spacing:-.025em}
  .sidebar-layout .sidebar-brand small{color:#d0dfe9}
