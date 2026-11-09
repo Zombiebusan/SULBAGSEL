@@ -10,6 +10,8 @@ Rincian Tabel IMJAS memiliki filter Branch dan bulan khusus tabel, terpisah dari
 
 ### Unduh dashboard HTML
 
+Sidebar memakai transisi halus saat diringkas/diperluas. Angka kartu dihitung dari nol menuju nilai sebenarnya saat dimuat atau data diperbarui, sedangkan grafik muncul dari bawah ketika masuk area layar. Animasi mengikuti pengaturan perangkat **reduced motion** dan angka langsung diselesaikan sebelum cetak/PDF.
+
 Setelah login dan masuk ke **`/dashboard`**, tambahkan **`/export`** di belakang alamat menjadi **`/dashboard/export`** (contoh: `https://underspec-sulbagsel.vercel.app/dashboard/export`). Browser langsung mengunduh `UNSPEC-Sulbagsel-<waktu>.html` dengan style dashboard yang sama, snapshot terbaru yang tersimpan beserta histori dan detail tiket. Alamat `/eksport` juga tetap tersedia. Ekspor tidak memicu sinkronisasi API baru.
 
 File dapat dibuka tanpa internet: navigasi, filter, grafik, detail tiket, cetak/PDF, dan mode siang/malam tetap tersedia. Waktu ekspor dan pembaruan data ditampilkan pada sidebar. Isi file tetap mengikuti data saat diekspor; unduh kembali untuk mendapat pembaruan berikutnya. Impor ke database dan logout tidak tersedia pada file offline.

@@ -103,10 +103,10 @@ export const navigationStyle = String.raw`
  .sidebar-layout .sidebar-menu-inner{padding:0 10px 18px}
  .sidebar-layout .nav-number{display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px}
  .sidebar-layout .nav-number svg{display:block;width:18px;height:18px}
- html[data-sidebar="collapsed"] .sidebar-brand{justify-content:center;padding:20px 8px}
+ html[data-sidebar="collapsed"] .sidebar-brand{justify-content:center;gap:0;padding:20px 8px}
  html[data-sidebar="collapsed"] .sidebar-brand-copy,html[data-sidebar="collapsed"] .nav-caption,html[data-sidebar="collapsed"] .nav-item>span:not(.nav-number),html[data-sidebar="collapsed"] .sidebar-note{display:none}
  html[data-sidebar="collapsed"] .sidebar-menu-inner{padding:12px 7px}
- html[data-sidebar="collapsed"] .nav-item{flex-direction:row;justify-content:center;gap:0;padding:10px 4px}
+ html[data-sidebar="collapsed"] .nav-item{flex-direction:row;align-items:center;justify-content:center;gap:0;min-height:44px;height:44px;margin:6px 0;padding:8px 4px}
  html[data-sidebar="collapsed"] .theme-button,html[data-sidebar="collapsed"] .logout-button{justify-content:center;padding:10px 4px;font-size:0;gap:0}
  html[data-sidebar="collapsed"] .theme-button>span,html[data-sidebar="collapsed"] .logout-button>span{display:none}
  html[data-sidebar="collapsed"] .theme-button svg,html[data-sidebar="collapsed"] .logout-button svg{width:18px;height:18px;flex:none}

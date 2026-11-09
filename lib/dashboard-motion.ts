@@ -1,6 +1,6 @@
 export const motionRuntime = String.raw`
 const reducedDashboardMotion=matchMedia('(prefers-reduced-motion:reduce)');
-const countedValues=new WeakSet(),animatedCharts=new WeakSet(),runningCounters=new Map();
+const countedValues=new WeakSet(),animatedCharts=new WeakSet(),observedCharts=new Set(),runningCounters=new Map();
 let dashboardMotionFrame=0;
 function finishDashboardCounters(){
  for(const [node,animation] of runningCounters){cancelAnimationFrame(animation.frame);node.nodeValue=animation.text}
@@ -37,14 +37,15 @@ function revealDashboardChart(svg){
  svg.animate([{opacity:0,transform:'translateY(18px) scaleY(.82)'},{opacity:1,transform:'translateY(0) scaleY(1)'}],{duration:750,easing:'cubic-bezier(.22,.61,.36,1)'});
 }
 const chartMotionObserver=new IntersectionObserver(entries=>{
- for(const entry of entries)if(entry.isIntersecting){chartMotionObserver.unobserve(entry.target);revealDashboardChart(entry.target)}
+ for(const entry of entries)if(entry.isIntersecting){chartMotionObserver.unobserve(entry.target);observedCharts.delete(entry.target);revealDashboardChart(entry.target)}
 },{threshold:.08});
 function queueDashboardMotion(){
  cancelAnimationFrame(dashboardMotionFrame);
  dashboardMotionFrame=requestAnimationFrame(()=>{
   animateDashboardValues();
+  for(const svg of observedCharts)if(!svg.isConnected){chartMotionObserver.unobserve(svg);observedCharts.delete(svg)}
   document.querySelectorAll('.dashboard-page.active #chart svg,.dashboard-page.active #monthlyChart svg,.dashboard-page.active #monthlySaChart svg,.dashboard-page.active #imjasTrend>.tablewrap>svg').forEach(svg=>{
-   if(animatedCharts.has(svg))return;animatedCharts.add(svg);svg.style.transformOrigin='50% 100%';chartMotionObserver.observe(svg);
+   if(animatedCharts.has(svg))return;animatedCharts.add(svg);svg.style.transformOrigin='50% 100%';observedCharts.add(svg);chartMotionObserver.observe(svg);
   });
  });
 }
@@ -61,6 +62,6 @@ export const motionStyle = String.raw`
  .sidebar-layout>.sidebar{transition:width .3s cubic-bezier(.22,.61,.36,1)}
  .sidebar-layout .sidebar-brand-copy{display:block;max-width:150px;overflow:hidden;white-space:nowrap;opacity:1;transition:max-width .25s ease,opacity .2s ease}
  .sidebar-layout .nav-item>span:not(.nav-number){display:block;min-width:0;max-width:170px;overflow:hidden;opacity:1;transition:max-width .25s ease,opacity .2s ease}
- html[data-sidebar="collapsed"] .sidebar-brand-copy,html[data-sidebar="collapsed"] .nav-item>span:not(.nav-number){display:block;max-width:0;opacity:0;pointer-events:none}
+  html[data-sidebar="collapsed"] .sidebar-brand-copy,html[data-sidebar="collapsed"] .nav-item>span:not(.nav-number){display:block;flex:0 0 0;max-width:0;max-height:0;overflow:hidden;opacity:0;pointer-events:none}
 }
 `;

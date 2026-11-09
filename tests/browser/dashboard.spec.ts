@@ -190,7 +190,15 @@ test('sidebar menyatu dengan header dan dapat diringkas menjadi ikon tanpa meres
   await expect(page.locator('.sidebar-brand-copy')).toBeHidden();
   await expect(page.locator('.nav-item').first().locator('strong')).toBeHidden();
   await expect(page.locator('.nav-item .nav-number svg')).toHaveCount(3);
-  expect((await page.locator('.sidebar').boundingBox())!.width).toBe(68);
+  await expect.poll(async () => (await page.locator('.sidebar').boundingBox())!.width).toBe(68);
+  const collapsedLayout = await page.locator('.sidebar').evaluate(sidebar => {
+    const logo = sidebar.querySelector('.brand-mark')!.getBoundingClientRect();
+    const bounds = sidebar.getBoundingClientRect();
+    return { logoCenter: logo.x + logo.width / 2, sidebarCenter: bounds.x + bounds.width / 2,
+      menuHeights: Array.from(sidebar.querySelectorAll('.nav-item'), button => button.getBoundingClientRect().height) };
+  });
+  expect(collapsedLayout.logoCenter).toBeCloseTo(collapsedLayout.sidebarCenter, 0);
+  expect(collapsedLayout.menuHeights).toEqual([44, 44, 44]);
   await selectWorkspace(page, 'monthly');
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
   await toggle.focus();await page.keyboard.press('Enter');
@@ -251,6 +259,43 @@ test('sidebar menyatu dengan header dan dapat diringkas menjadi ikon tanpa meres
   await expect(page.locator('#page-monthly')).toBeVisible();
   await expect(page.locator('#page-business')).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+test('angka dan grafik beranimasi saat dimuat, nilai akhir akurat, serta menghormati reduced motion', async ({ page }) => {
+  const state: DashboardBootstrap = {
+    persisted: true, error: null, syncedAt: '2026-11-05T06:00:00Z',
+    snapshots: { '2026-11-04': { ANT: 1000 }, '2026-11-05': { ANT: 1200 } },
+    mapping: { ANT: { branch: 'MAKASSAR', sa: 'SERVICE AREA TAMALANREA', region: 'SULBAGSEL' } },
+  };
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.addInitScript(() => {
+    const samples: string[] = [];
+    Object.assign(window, { balanceSamples: samples });
+    new MutationObserver(() => {
+      const value = document.getElementById('totalSaldo')?.textContent;
+      if (value && samples.length < 300) samples.push(value);
+    }).observe(document, { subtree: true, childList: true, characterData: true });
+  });
+  await page.route('**/dashboard', async route => route.fulfill({ contentType: 'text/html', body: await dashboardHtml(state) }));
+  await page.route('**/api/dashboard', route => route.fulfill({ json: state }));
+  await page.route('**/api/tickets?*', route => route.fulfill({ json: { tickets: [] } }));
+  await page.goto('/dashboard');
+  const chart = page.locator('#chart .main-trend-card svg');
+  await expect.poll(() => chart.evaluate(svg => svg.getAnimations().length)).toBeGreaterThan(0);
+  await page.waitForFunction(() => (window as unknown as { balanceSamples: string[] }).balanceSamples.includes('0'));
+  await expect(page.locator('#totalSaldo')).toHaveText('1.200');
+  const samples = await page.evaluate(() => (window as unknown as { balanceSamples: string[] }).balanceSamples);
+  expect(samples).toContain('0');
+  expect(samples.some(value => { const number = Number(value.replaceAll('.', ''));return number > 0 && number < 1200; })).toBeTruthy();
+  await chart.evaluate(async svg => { await Promise.all(svg.getAnimations().map(animation => animation.finished)); });
+  expect(await chart.evaluate(svg => getComputedStyle(svg).transform)).toBe('none');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.reload();
+  await expect(page.locator('#totalSaldo')).toHaveText('1.200');
+  await chart.scrollIntoViewIfNeeded();
+  expect(await chart.evaluate(svg => svg.getAnimations().length)).toBe(0);
+  await page.locator('#sidebarToggle').click();
+  expect(await page.locator('.sidebar').evaluate(sidebar => getComputedStyle(sidebar).transitionDuration)).toBe('0s');
 });
 
 test('kartu Saldo H menampilkan selisih dan ikon sesuai perubahan H-1', async ({ page }) => {
