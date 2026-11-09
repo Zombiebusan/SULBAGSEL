@@ -4,7 +4,7 @@ Dashboard Next.js untuk Vercel, dengan login, pengambilan data terbaru saat hala
 
 ## Navigasi dashboard
 
-Menu berupa **sidebar permanen di sisi kiri**, tetap terlihat ketika dashboard digulir dan tidak memiliki tombol tutup. Area dashboard berada di sebelah kanan agar tidak tertutup menu. Pada layar kecil sidebar dibuat lebih ramping. Logo **U** hanya ada di sidebar, dengan aksen biru mengikuti palet dashboard. Badge target memakai ikon 🎯. Status pembaruan, mode siang/malam, dan tombol Keluar tersedia di sidebar. Perpindahan halaman tidak mereset filter dan dapat dioperasikan lewat keyboard.
+Menu berupa **sidebar tetap di sisi kiri yang menyatu dengan header tanpa celah**. Klik logo **U** pada sidebar untuk berganti antara menu lengkap dengan teks dan mode ringkas berisi ikon. Area dashboard menyesuaikan lebar sidebar; ikon tetap dapat dipakai berpindah halaman. Pada layar kecil menu awal diringkas. Mode siang memakai sidebar putih dan mode malam memakai latar gelap. Badge target memakai ikon 🎯. Status pembaruan tersedia pada menu lengkap; mode siang/malam dan Keluar tersedia dalam kedua mode sidebar. Perpindahan halaman tidak mereset filter dan dapat dioperasikan lewat keyboard.
 
 Rincian Tabel IMJAS memiliki filter Branch dan bulan khusus tabel, terpisah dari filter progres harian. Seluruh tabel (performansi Branch, rekap, detail tiket, ringkasan bulanan Branch & Service Area, dan IMJAS) memiliki header kolom yang tetap terlihat saat isi tabel digulir.
 

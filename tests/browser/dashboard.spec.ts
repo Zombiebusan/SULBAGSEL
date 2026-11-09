@@ -32,6 +32,10 @@ test('/dashboard/export mengunduh HTML mandiri dengan navigasi, filter dan detai
   page.on('request', request => { if (/^https?:/.test(request.url())) network.push(request.url()); });
   await page.goto(pathToFileURL(file).href);
   await expect(page.locator('#syncStatus')).toContainText('Snapshot offline');
+  await page.locator('#sidebarToggle').click();
+  await expect(page.locator('#sidebarToggle')).toHaveAttribute('aria-expanded', 'false');
+  await page.locator('#sidebarToggle').click();
+  await expect(page.locator('#sidebarToggle')).toHaveAttribute('aria-expanded', 'true');
   await expect(page.locator('#cards .card')).toHaveCount(7);
   await expect(page.locator('#orders')).not.toContainText('Memuat detail');
   await expect(page.locator('#orders tr').first().locator('td').first()).not.toBeEmpty();
@@ -159,7 +163,7 @@ test('login, seluruh menu referensi, filter dan logout berfungsi', async ({ page
   expect(errors).toEqual([]);
 });
 
-test('sidebar permanen tetap di kiri saat scroll dan mendukung mobile tanpa mereset filter', async ({ page }) => {
+test('sidebar menyatu dengan header dan dapat diringkas menjadi ikon tanpa mereset filter', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   const state: DashboardBootstrap = {
@@ -176,8 +180,29 @@ test('sidebar permanen tetap di kiri saat scroll dan mendukung mobile tanpa mere
   await expect(page.locator('header .brand-mark')).toHaveCount(0);
   await expect(page.locator('.sidebar .brand-mark')).toHaveText('U');
   await expect(page.locator('header .target-icon')).toHaveText('🎯');
+  const headerBox = (await page.locator('main>header').boundingBox())!;
+  const initialSidebar = (await page.locator('.sidebar').boundingBox())!;
+  expect(headerBox.x).toBe(initialSidebar.width);
+  expect(headerBox.y).toBe(0);
+  const toggle = page.locator('#sidebarToggle');
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('.sidebar-brand-copy')).toBeHidden();
+  await expect(page.locator('.nav-item').first().locator('strong')).toBeHidden();
+  await expect(page.locator('.nav-item .nav-number svg')).toHaveCount(3);
+  expect((await page.locator('.sidebar').boundingBox())!.width).toBe(68);
+  await selectWorkspace(page, 'monthly');
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await toggle.focus();await page.keyboard.press('Enter');
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('.nav-item').first().locator('strong')).toBeVisible();
+  await selectWorkspace(page, 'progress');
   const contentWidth = await page.locator('.app-content').evaluate(el => el.getBoundingClientRect().width);
-  expect(contentWidth).toBe(await page.locator('.app-layout').evaluate(el => el.getBoundingClientRect().width));
+  expect(contentWidth).toBe(await page.locator('.app-layout').evaluate(el => {
+    const style = getComputedStyle(el);
+    return el.getBoundingClientRect().width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+  }));
   expect(await page.locator('#sidebarMenu').evaluate(menu => (menu as HTMLElement).inert)).toBeFalsy();
   await page.evaluate(() => window.scrollTo(0, 600));
   expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0);
@@ -213,6 +238,7 @@ test('sidebar permanen tetap di kiri saat scroll dan mendukung mobile tanpa mere
   await expect(page.locator('#branch')).toHaveValue('MAKASSAR');
   await page.setViewportSize({ width: 390, height: 844 });
   await openNavigation(page);
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
   await page.getByRole('button', { name: 'Mode Malam', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');

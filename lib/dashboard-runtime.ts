@@ -1,4 +1,7 @@
+import { navigationRuntime } from './dashboard-navigation';
+
 export const clientRuntime = String.raw`
+${navigationRuntime}
 // Extend the reference dashboard without changing its navigation or component layout.
 const statusNode=document.querySelector('.sidebar-note');
 let achievedGaugePercent=0;
@@ -8,11 +11,13 @@ logout.onclick=async()=>{try{await fetch('/api/auth/logout',{method:'POST'});loc
 (document.getElementById('sidebarMenuInner')||document.querySelector('.sidebar')).append(logout);
 const themeButton=document.createElement('button');themeButton.type='button';themeButton.className='theme-button';logout.before(themeButton);
 const themeIcon=paths=>'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+paths+'</svg>';
+logout.innerHTML=themeIcon('<path d="M9 5H5v14h4M14 8l4 4-4 4M9 12h9"/>')+'<span>Keluar</span>';logout.setAttribute('aria-label','Keluar');logout.title='Keluar';
 function setTheme(theme,save=true){
  document.documentElement.dataset.theme=theme;
  const dark=theme==='dark';
  themeButton.innerHTML=themeIcon(dark?'<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/>':'<path d="M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z"/>')+'<span>'+(dark?'Mode Siang':'Mode Malam')+'</span>';
- themeButton.setAttribute('aria-pressed',String(dark));
+  themeButton.setAttribute('aria-pressed',String(dark));
+  themeButton.setAttribute('aria-label',dark?'Mode Siang':'Mode Malam');themeButton.title=dark?'Mode Siang':'Mode Malam';
  if(save)try{localStorage.setItem('unspec-theme',theme)}catch{}
  applyCardGradients();
 }

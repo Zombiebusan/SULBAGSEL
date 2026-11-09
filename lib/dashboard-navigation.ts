@@ -1,13 +1,39 @@
 export function sidebarNavigation(html: string): string {
+  const icon = (paths: string) => '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+paths+'</svg>';
   return html.replace('class="app-layout"', 'class="app-layout sidebar-layout"')
+    .replace('<div class="sidebar-brand"><span class="brand-mark">U</span><div><strong>UNSPEC</strong><small>EXECUTIVE SULBAGSEL</small></div></div>', '<button type="button" id="sidebarToggle" class="sidebar-brand" aria-controls="sidebarMenu" aria-expanded="true" aria-label="Ringkas menu"><span class="brand-mark" aria-hidden="true">U</span><span class="sidebar-brand-copy"><strong>UNSPEC</strong><small>EXECUTIVE SULBAGSEL</small></span></button>')
+    .replace('<span class="nav-number">01</span>', '<span class="nav-number">'+icon('<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>')+'</span>')
+    .replace('<span class="nav-number">02</span>', '<span class="nav-number">'+icon('<path d="M3 3v18h18M7 14l4-4 4 3 5-7"/>')+'</span>')
+    .replace('<span class="nav-number">03</span>', '<span class="nav-number">'+icon('<path d="M12 3v18M17 7H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>')+'</span>')
     .replace('</aside>', '</div></div></aside>')
     .replace('<div class="nav-caption">', '<div id="sidebarMenu" class="sidebar-menu"><div id="sidebarMenuInner" class="sidebar-menu-inner"><div class="nav-caption">')
     .replace('<span class="badge">Target', '<span class="badge"><span class="target-icon" aria-hidden="true">🎯</span>Target');
 }
 
+export const navigationRuntime = String.raw`
+const sidebarToggle=$('sidebarToggle');
+function setSidebarExpanded(expanded){
+ document.documentElement.dataset.sidebar=expanded?'expanded':'collapsed';
+ sidebarToggle.setAttribute('aria-expanded',String(expanded));
+ sidebarToggle.setAttribute('aria-label',expanded?'Ringkas menu':'Perluas menu');
+ sidebarToggle.title=expanded?'Ringkas menu':'Perluas menu';
+}
+sidebarToggle.onclick=()=>setSidebarExpanded(sidebarToggle.getAttribute('aria-expanded')!=='true');
+const sidebarMobile=matchMedia('(max-width:760px)');
+setSidebarExpanded(!sidebarMobile.matches);
+sidebarMobile.addEventListener('change',event=>setSidebarExpanded(!event.matches));
+document.querySelectorAll('.sidebar .nav-item').forEach(button=>{
+ const label=button.querySelector('strong').textContent;button.setAttribute('aria-label',label);button.title=label;
+});
+const dashboardHeader=document.querySelector('main>header');
+const measureDashboardHeader=()=>document.documentElement.style.setProperty('--dashboard-header-height',dashboardHeader.getBoundingClientRect().height+'px');
+new ResizeObserver(measureDashboardHeader).observe(dashboardHeader);measureDashboardHeader();
+`;
+
 export const navigationStyle = String.raw`
 @media screen {
  :root{--sidebar-width:220px}
+ html[data-sidebar="collapsed"]{--sidebar-width:68px}
  html,body{overflow-x:clip}
  body>main{width:calc(100% - var(--sidebar-width));margin-left:var(--sidebar-width);margin-right:0;max-width:none}
  .sidebar-layout.app-layout{display:block;margin-top:20px;--sidebar-bg:#fff;--sidebar-line:#e5eaf0;--sidebar-text:#294457;--sidebar-muted:#718394;--sidebar-soft:#f6f9fb;--sidebar-hover:#eef3f8}
@@ -41,7 +67,7 @@ export const navigationStyle = String.raw`
  main .tablewrap:has(table) thead th{position:static!important;background:#18364b;color:#fff;box-shadow:0 1px 0 var(--line)}
  .imjas-table-toolbar{flex-wrap:wrap;gap:12px}
  @media(max-width:760px){
-  :root{--sidebar-width:112px}
+  :root{--sidebar-width:180px}
   body>main{padding:12px}
   .sidebar-layout>.sidebar{padding:14px 6px}
   .sidebar-layout .sidebar-brand{flex-direction:column;text-align:center;padding:0 2px 16px;gap:6px}
@@ -62,6 +88,31 @@ export const navigationStyle = String.raw`
   header .badge{font-size:10px}
   .target-icon{font-size:20px}
  }
+ body>main{padding:0}
+ main>header{margin:0;border-radius:0;border:0;padding:24px 28px;box-shadow:none;background:#18364b}
+ .sidebar-layout.app-layout{margin-top:0;padding:20px 24px 24px}
+ .sidebar-layout>.sidebar{padding:0;border-right:0}
+ .sidebar-layout .sidebar-brand{display:flex;align-items:center;flex-direction:row;gap:10px;width:100%;min-height:var(--dashboard-header-height,140px);margin:0;padding:20px 14px;border:0;border-radius:0;background:#18364b;text-align:left;cursor:pointer}
+ .sidebar-layout .sidebar-brand:hover{background:#18364b}
+ .sidebar-layout .sidebar-brand strong{color:#fff}
+ .sidebar-layout .sidebar-brand small{color:#d0dfe9}
+ .sidebar-layout .sidebar-brand .brand-mark{background:#ffffff16;border:1px solid #ffffff40;box-shadow:none}
+ html[data-theme="dark"] .sidebar-layout .sidebar-brand,html[data-theme="dark"] .sidebar-layout .sidebar-brand:hover{background:#141414}
+ .sidebar-layout .sidebar-brand-copy{min-width:0}
+ .sidebar-layout .sidebar-menu-inner{padding:0 10px 18px}
+ .sidebar-layout .nav-number{display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px}
+ .sidebar-layout .nav-number svg{display:block;width:18px;height:18px}
+ html[data-sidebar="collapsed"] .sidebar-brand{justify-content:center;padding:20px 8px}
+ html[data-sidebar="collapsed"] .sidebar-brand-copy,html[data-sidebar="collapsed"] .nav-caption,html[data-sidebar="collapsed"] .nav-item>span:not(.nav-number),html[data-sidebar="collapsed"] .sidebar-note{display:none}
+ html[data-sidebar="collapsed"] .sidebar-menu-inner{padding:12px 7px}
+ html[data-sidebar="collapsed"] .nav-item{flex-direction:row;justify-content:center;gap:0;padding:10px 4px}
+ html[data-sidebar="collapsed"] .theme-button,html[data-sidebar="collapsed"] .logout-button{justify-content:center;padding:10px 4px;font-size:0;gap:0}
+ html[data-sidebar="collapsed"] .theme-button>span,html[data-sidebar="collapsed"] .logout-button>span{display:none}
+ html[data-sidebar="collapsed"] .theme-button svg,html[data-sidebar="collapsed"] .logout-button svg{width:18px;height:18px;flex:none}
+ .sidebar-layout .logout-button{display:flex;align-items:center;justify-content:center;gap:8px}
+ .sidebar-layout .logout-button[hidden]{display:none}
+ .sidebar-layout .logout-button svg{width:16px;height:16px;flex:none}
+ @media(max-width:760px){main>header{padding:16px 12px}.sidebar-layout.app-layout{padding:14px 10px}.sidebar-layout .sidebar-brand{padding:16px 10px}.sidebar-layout .nav-item{flex-direction:row;align-items:center;gap:6px}.sidebar-layout .nav-number{flex-basis:24px;width:24px;height:24px}}
 }
 @media print{body>main{width:100%;margin:0}.sidebar{display:none!important}main .tablewrap:has(table){max-height:none!important;overflow:visible!important}main .tablewrap:has(table) thead{position:static}}
 `;
