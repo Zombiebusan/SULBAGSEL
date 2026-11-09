@@ -1,7 +1,9 @@
 import { navigationRuntime } from './dashboard-navigation';
+import { motionRuntime } from './dashboard-motion';
 
 export const clientRuntime = String.raw`
 ${navigationRuntime}
+${motionRuntime}
 // Extend the reference dashboard without changing its navigation or component layout.
 const statusNode=document.querySelector('.sidebar-note');
 let achievedGaugePercent=0;
@@ -30,7 +32,7 @@ const originalShowDetails=showDetails;
 function applyCardGradients(){
  const achieved=$('cards')?.children[5]?.querySelector('.value');
  if(achieved){
-   const parsed=Number.parseFloat(achieved.textContent.replace(/\./g,'').replace(',','.'));
+   const parsed=Number.parseFloat((achieved.dataset.finalValue??achieved.textContent).replace(/\./g,'').replace(',','.'));
    const percent=Number.isFinite(parsed)?Math.max(0,Math.min(100,parsed)):null;
    let icon=achieved.querySelector('.achieved-icon');
    if(!icon){
@@ -61,8 +63,8 @@ function applyCardGradients(){
  });
 }
 const originalRender=render,originalRenderImjas=renderImjas;
-render=function(){originalRender();applyCardGradients()};
-renderImjas=function(){originalRenderImjas();applyCardGradients()};
+render=function(){originalRender();applyCardGradients();queueDashboardMotion()};
+renderImjas=function(){originalRenderImjas();applyCardGradients();queueDashboardMotion()};
 const originalDrawChart=drawChart;
 function shadeDailyTrend(svg,index){
  const polyline=svg?.querySelector('polyline');if(!polyline)return;
@@ -110,10 +112,11 @@ drawChart=function(){
  const cards=$('chart').querySelectorAll('.daily-trend-card');
  cards[0]?.classList.add('main-trend-card');
  cards.forEach((card,index)=>shadeDailyTrend(card.querySelector('svg'),index));
- if(!$('sa').value){
+  if(!$('sa').value){
    const firstBranch=$('branch').value?cards[0]:cards[1];
    if(firstBranch){const heading=document.createElement('h2');heading.className='branch-trend-heading';heading.textContent='Tren Harian Branch';firstBranch.before(heading)}
- }
+  }
+ queueDashboardMotion();
 };
 function setStatus(message,error=false){$('syncStatus').textContent=message;$('syncStatus').classList.toggle('error',error)}
 // The reference bound this handler before drawChart was extended.
@@ -192,7 +195,7 @@ if(offlineExport){
  for(const id of ['import','file','uploadDate','restore']){const control=$(id);if(control){control.disabled=true;control.title='Impor tersedia pada dashboard online.'}}
  backup=()=>download('unspec-riwayat.json',JSON.stringify(data),'application/json');
 }
-applyCardGradients();updatePeriodLabels();drawChart();showDetails($('date').value,filteredCodes($('branch').value),scopeLabel(),false);
+applyCardGradients();updatePeriodLabels();drawChart();showDetails($('date').value,filteredCodes($('branch').value),scopeLabel(),false);queueDashboardMotion();
 if(offlineExport){
  const time=value=>new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Makassar',dateStyle:'short',timeStyle:'medium'}).format(new Date(value))+' WITA';
  setStatus('Snapshot offline · Diekspor '+time(offlineExport.exportedAt)+(bootstrapState?.syncedAt?' · Data terakhir '+time(bootstrapState.syncedAt):' · Histori referensi'));

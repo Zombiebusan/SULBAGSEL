@@ -109,13 +109,12 @@ test('login, seluruh menu referensi, filter dan logout berfungsi', async ({ page
   await expect(page.locator('#chart .daily-trend-card')).not.toHaveCount(0);
   await expect(page.locator('#chart .branch-trend-heading')).toHaveCount(1);
   await expect(page.locator('#chart .daily-trend-card > b').first()).toHaveText('MAKASSAR');
-  const branchChart = await page.locator('#chart .main-trend-card svg').boundingBox();
-  expect(branchChart!.width / branchChart!.height).toBeCloseTo(550 / 200, 1);
+  await expect.poll(async () => { const box = (await page.locator('#chart .main-trend-card svg').boundingBox())!;return box.width / box.height; }).toBeCloseTo(550 / 200, 1);
   await page.locator('#sa').selectOption('SERVICE AREA TAMALANREA');
   await expect(page.locator('#chart .daily-trend-card')).toHaveCount(1);
   await expect(page.locator('#chart .main-trend-card > b')).toHaveText('SERVICE AREA TAMALANREA');
+  await expect.poll(async () => { const box = (await page.locator('#chart .main-trend-card svg').boundingBox())!;return box.width / box.height; }).toBeCloseTo(550 / 200, 1);
   const areaChart = await page.locator('#chart .main-trend-card svg').boundingBox();
-  expect(areaChart!.width / areaChart!.height).toBeCloseTo(550 / 200, 1);
   expect(areaChart!.height).toBeGreaterThan(205);
   await page.locator('#sa').selectOption('');
   await selectWorkspace(page, 'monthly');

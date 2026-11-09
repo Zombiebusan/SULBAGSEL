@@ -3,6 +3,7 @@ import { normalizeTickets } from './normalize';
 import { clientRuntime } from './dashboard-runtime';
 import { dashboardAppearance, themeInit } from './dashboard-appearance';
 import { sidebarNavigation, navigationStyle } from './dashboard-navigation';
+import { motionStyle } from './dashboard-motion';
 import type { Ticket, Workzone } from './types';
 
 export type DashboardBootstrap = {
@@ -132,6 +133,6 @@ export async function dashboardHtml(bootstrap?: DashboardBootstrap, offline?: Da
   result = result.replace('</body>', '<script>const bootstrapState='+JSON.stringify(bootstrap ?? null).replace(/</g, '\\u003c')+';\n'+clientRuntime+'</script></body>');
   result = result.replace('</head>', '<script>const offlineExport='+JSON.stringify(offline ? { exportedAt: offline.exportedAt } : null).replace(/</g, '\\u003c')+';'+themeInit+'</script><style>'+dashboardAppearance+'</style></head>');
   if (offline) result = result.replace('function todayWita(){', 'function todayWita(){if(offlineExport)return new Intl.DateTimeFormat(\'en-CA\',{timeZone:\'Asia/Makassar\',year:\'numeric\',month:\'2-digit\',day:\'2-digit\'}).format(new Date(offlineExport.exportedAt));');
-  result = sidebarNavigation(result).replace('</head>', '<style>'+navigationStyle+'</style></head>');
+  result = sidebarNavigation(result).replace('</head>', '<style>'+navigationStyle+motionStyle+'</style></head>');
   return result;
 }
