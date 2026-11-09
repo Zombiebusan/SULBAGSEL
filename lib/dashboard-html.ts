@@ -103,6 +103,8 @@ export async function dashboardHtml(bootstrap?: DashboardBootstrap) {
   result = result.replace('IMJAS MTD November · Realisasi &amp; Loss per Branch', '<span id="businessHeading">IMJAS MTD November · Realisasi &amp; Loss per Branch</span>');
   result = result.replace('Empat branch menggunakan posisi November MTD terbaru', 'Empat branch menggunakan posisi periode terbaru');
   result = result.replace('<h2>IMJAS · Kontribusi KPI UNSPEC</h2>', '');
+  result = result.replace('<label for="imjasMonthFilter">', '<label for="imjasBranchFilter">Filter Branch <select id="imjasBranchFilter" onchange="renderImjas()"><option value="">Seluruh Sulbagsel</option><option>BONE</option><option>KENDARI</option><option>MAKASSAR</option><option>PARE-PARE</option></select></label><label for="imjasMonthFilter">');
+  result = result.replace("const scopes=sa?[{br:b,area:sa,label:sa}]:bs.flatMap(br=>", "const tableBranch=$('imjasBranchFilter').value,tableBranches=tableBranch?[tableBranch]:['',...branches];const scopes=tableBranches.flatMap(br=>");
   result = result.replace('<div id="imjasCards"', '<h2 id="regionalImjasHeading">IMJAS Juli- November MTD 2026 - Realisasi &amp; Loss Regional Sulbagsel</h2><div id="imjasCards"');
   result = result.replace('Snapshot 1 November 2026; Oktober FM sampai 30 Oktober dan November MTD mulai 1 November.', 'Histori awal mengikuti referensi. Oktober 2026 FM sampai 30 Oktober; periode berikutnya berlanjut otomatis berdasarkan snapshot WITA.');
   result = result.replace('Sumber pembaruan: export (40).', 'Sumber pembaruan: API MONICA dan snapshot Neon PostgreSQL.');

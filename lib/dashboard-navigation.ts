@@ -1,13 +1,20 @@
 export function hamburgerNavigation(html: string): string {
   const originalBrand = '<div class="sidebar-brand"><span class="brand-mark">U</span><div><strong>UNSPEC</strong><small>EXECUTIVE SULBAGSEL</small></div></div>';
-  return html.replace('class="app-layout"', 'class="app-layout hamburger-layout"')
+  const result = html.replace('class="app-layout"', 'class="app-layout hamburger-layout"')
     .replace(originalBrand, '<button type="button" class="sidebar-brand menu-toggle" id="menuToggle" aria-expanded="false" aria-controls="sidebarMenu" aria-label="Buka menu UNSPEC" title="Buka menu UNSPEC"><span class="brand-mark" aria-hidden="true">U</span><span class="sidebar-brand-copy"><strong>UNSPEC</strong><small>EXECUTIVE SULBAGSEL</small></span><span class="hamburger-glyph" aria-hidden="true"><span></span><span></span><span></span></span></button><div id="sidebarMenu" class="sidebar-menu" aria-hidden="true" inert><div id="sidebarMenuInner" class="sidebar-menu-inner">')
     .replace('</aside>', '</div></div></aside>');
+  const toggle = result.match(/<button type="button" class="sidebar-brand menu-toggle"[\s\S]*?<\/button>/)?.[0] ?? '';
+  const headerToggle = toggle.replace('<span class="hamburger-glyph" aria-hidden="true"><span></span><span></span><span></span></span>', '');
+  return result.replace(toggle, '').replace('<header><div>', '<header><div class="header-identity">'+headerToggle+'<div>')
+    .replace('</small></div><span class="badge">', '</small></div></div><span class="badge">')
+    .replace('<span class="badge">Target', '<span class="badge"><span class="target-icon" aria-hidden="true">🎯</span>Target');
 }
 
 export const navigationRuntime = String.raw`
 const navigationLayout=document.querySelector('.hamburger-layout');
 const menuToggle=$('menuToggle'),sidebarMenu=$('sidebarMenu');
+const dashboardHeader=document.querySelector('main>header');
+if(dashboardHeader){const measureHeader=()=>document.documentElement.style.setProperty('--dashboard-header-height',dashboardHeader.getBoundingClientRect().height+'px');new ResizeObserver(measureHeader).observe(dashboardHeader);measureHeader()}
 function setMenuOpen(open,returnFocus=false){
  if(!navigationLayout||!menuToggle||!sidebarMenu)return;
  navigationLayout.classList.toggle('menu-open',open);
@@ -15,14 +22,40 @@ function setMenuOpen(open,returnFocus=false){
  menuToggle.setAttribute('aria-label',open?'Tutup menu UNSPEC':'Buka menu UNSPEC');
  menuToggle.title=open?'Tutup menu UNSPEC':'Buka menu UNSPEC';
  sidebarMenu.setAttribute('aria-hidden',String(!open));sidebarMenu.inert=!open;
+ document.querySelector('.sidebar')?.setAttribute('aria-hidden',String(!open));
  if(!open&&returnFocus)menuToggle.focus({preventScroll:true});
 }
 if(menuToggle&&sidebarMenu){
  menuToggle.addEventListener('click',()=>setMenuOpen(menuToggle.getAttribute('aria-expanded')!=='true'));
  sidebarMenu.addEventListener('click',event=>{if(event.target.closest('.nav-item[data-page]'))setMenuOpen(false,true)});
  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&menuToggle.getAttribute('aria-expanded')==='true'){event.preventDefault();setMenuOpen(false,true)}});
+ document.addEventListener('click',event=>{if(menuToggle.getAttribute('aria-expanded')==='true'&&!event.composedPath().some(node=>node===menuToggle||node===sidebarMenu))setMenuOpen(false)});
  setMenuOpen(false);
 }
+`;
+
+const dashboardLayoutStyle = String.raw`
+@media screen {
+ html,body{overflow-x:clip}
+ .header-identity{display:flex;align-items:center;gap:14px;min-width:0}
+ header .menu-toggle{position:relative;display:flex;align-items:center;justify-content:center;flex:0 0 48px;width:48px;height:48px;min-height:48px;padding:4px;border:1px solid #ffffff55;background:#ffffff16;border-radius:12px;cursor:pointer}
+ header .menu-toggle:hover{background:#ffffff30}
+ header .menu-toggle .brand-mark{display:grid;place-items:center;width:36px;height:36px;background:transparent;color:#fff;font-size:28px;font-weight:800}
+ header .sidebar-brand-copy{display:none!important}
+ header .hamburger-glyph{right:0;bottom:0;color:#18364b;background:#fff}
+ .hamburger-layout.app-layout,.hamburger-layout.app-layout.menu-open{display:block;grid-template-columns:minmax(0,1fr)}
+ .hamburger-layout>.sidebar{position:fixed;top:calc(var(--dashboard-header-height,130px) + 12px);left:20px;z-index:45;width:min(280px,calc(100vw - 40px));max-height:calc(100dvh - var(--dashboard-header-height,130px) - 28px);overflow:auto;box-shadow:0 16px 48px #0003;visibility:hidden;opacity:0;transform:translateX(-12px);transition:opacity .2s,transform .2s,visibility .2s}
+ .hamburger-layout.menu-open>.sidebar{visibility:visible;opacity:1;transform:translateX(0)}
+ header .badge{display:inline-flex;align-items:center;gap:8px}
+ .target-icon{font-size:24px;line-height:1}
+ main .tablewrap:has(table){max-height:65vh;overflow:auto!important;position:relative;scrollbar-gutter:stable}
+ main .tablewrap:has(table) table{display:table!important;overflow:visible;border-collapse:separate;border-spacing:0}
+ main .tablewrap:has(table) thead{position:sticky;top:0;z-index:6}
+ main .tablewrap:has(table) thead th{position:static!important;background:#18364b;color:#fff;box-shadow:0 1px 0 var(--line)}
+ .imjas-table-toolbar{flex-wrap:wrap;gap:12px}
+ @media(max-width:760px){.header-identity{gap:10px}header .menu-toggle{flex-basis:42px;width:42px;height:42px;min-height:42px}main>header h1{font-size:18px}header .badge{font-size:10px}.target-icon{font-size:20px}.hamburger-layout>.sidebar{left:12px;width:min(280px,calc(100vw - 24px))}}
+}
+@media print{header .menu-toggle{display:none}main .tablewrap:has(table){max-height:none!important;overflow:visible!important}main .tablewrap:has(table) thead{position:static}}
 `;
 
 export const navigationStyle = String.raw`
@@ -62,4 +95,5 @@ export const navigationStyle = String.raw`
   .sidebar-menu-inner .theme-button,.sidebar-menu-inner .logout-button{margin-top:10px}
  }
 }
+${dashboardLayoutStyle}
 `;

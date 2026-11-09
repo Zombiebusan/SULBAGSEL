@@ -63,6 +63,13 @@ test('login, seluruh menu referensi, filter dan logout berfungsi', async ({ page
   await expect(page.locator('#monthlyChart > div > b').first()).toHaveText('Sulbagsel');
   await expect(page.locator('#monthlyChart .monthly-branch-heading')).toHaveText('Tren Bulanan Branch');
   await expect(page.locator('#monthlyChart > div > b').nth(1)).toHaveText('BONE');
+  const monthlyScroll = await page.locator('#monthlyTable').evaluate(body => {
+    const table = body.closest('table')!, wrap = table.parentElement!;
+    wrap.scrollTop = 250;
+    return { scroll: wrap.scrollTop, header: table.querySelector('thead')!.getBoundingClientRect().top, top: wrap.getBoundingClientRect().top };
+  });
+  expect(monthlyScroll.scroll).toBeGreaterThan(0);
+  expect(monthlyScroll.header).toBeCloseTo(monthlyScroll.top, 0);
   await selectWorkspace(page, 'progress');
   await page.locator('#branch').selectOption('MAKASSAR');
   await expect(page.locator('#chart .daily-trend-card')).not.toHaveCount(0);
@@ -84,6 +91,7 @@ test('login, seluruh menu referensi, filter dan logout berfungsi', async ({ page
   await expect(page.locator('#monthlyChart > div > b').first()).toHaveText('MAKASSAR');
   await selectWorkspace(page, 'business');
   await expect(page.locator('#imjasTable tr')).not.toHaveCount(0);
+  expect(await page.locator('#imjasTable').evaluate(body => getComputedStyle(body.closest('table')!.querySelector('thead')!).position)).toBe('sticky');
   await expect(page.locator('#regionalImjasHeading')).toBeVisible();
   await expect(page.locator('#regionalImjasHeading')).toContainText('Realisasi & Loss Regional Sulbagsel');
   expect(await page.locator('#imjasCards').evaluate(cards => !!(cards.compareDocumentPosition(document.getElementById('imjasBranchCards')!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBeTruthy();
@@ -137,6 +145,10 @@ test('logo hamburger membuka menu beranimasi, mendukung keyboard dan mobile tanp
   await expect(toggle).toBeVisible();
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
   await expect(page.locator('#sidebarMenu')).toBeHidden();
+  await expect(page.locator('header #menuToggle .brand-mark')).toHaveText('U');
+  await expect(page.locator('header .target-icon')).toHaveText('🎯');
+  const contentWidth = await page.locator('.app-content').evaluate(el => el.getBoundingClientRect().width);
+  expect(contentWidth).toBe(await page.locator('.app-layout').evaluate(el => el.getBoundingClientRect().width));
   expect(await page.locator('#sidebarMenu').evaluate(menu => (menu as HTMLElement).inert)).toBeTruthy();
   await toggle.focus();await page.keyboard.press('Tab');
   await expect(page.locator('#date')).toBeFocused();
@@ -156,6 +168,18 @@ test('logo hamburger membuka menu beranimasi, mendukung keyboard dan mobile tanp
   await page.locator('.nav-item[data-page="monthly"]').click();
   await expect(page.locator('#page-monthly')).toBeVisible();
   await expect(page.locator('#menuToggle')).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#branch')).toHaveValue('MAKASSAR');
+  const monthlyWrap = page.locator('.tablewrap').filter({ has: page.locator('#monthlyTable') });
+  await monthlyWrap.scrollIntoViewIfNeeded();
+  const headingBefore = await monthlyWrap.locator('thead').boundingBox();
+  await monthlyWrap.evaluate(el => { el.scrollTop = 200; });
+  expect((await monthlyWrap.locator('thead').boundingBox())!.y).toBeCloseTo(headingBefore!.y, 0);
+  await selectWorkspace(page, 'business');
+  await page.locator('#imjasBranchFilter').selectOption('BONE');
+  await page.locator('#imjasMonthFilter').selectOption('2026-10');
+  await expect(page.locator('#imjasTable tr').first().locator('td').first()).toContainText('BONE');
+  await expect(page.locator('#imjasTable')).not.toContainText('MAKASSAR');
+  await expect(page.locator('#imjasTable')).not.toContainText('November');
   await expect(page.locator('#branch')).toHaveValue('MAKASSAR');
   await page.setViewportSize({ width: 390, height: 844 });
   await openNavigation(page);

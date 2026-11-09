@@ -4,7 +4,9 @@ Dashboard Next.js untuk Vercel, dengan login, pengambilan data terbaru saat hala
 
 ## Navigasi dashboard
 
-Menu awal tertutup dan hanya logo UNSPEC yang terlihat sebagai pemicu hamburger. Klik logo untuk membuka daftar menu dengan animasi; klik lagi atau tekan Escape untuk menutup. Memilih halaman otomatis menutup menu tanpa mereset filter. Status pembaruan, mode siang/malam, dan tombol Keluar tetap tersedia di dalam daftar. Pada layar kecil menu terbuka ke bawah; pada desktop sidebar melebar dan area dashboard menyesuaikan. Tombol dapat dioperasikan lewat keyboard dan animasi mengikuti preferensi reduced motion.
+Menu awal tertutup. Klik logo **U** pada header untuk membuka panel menu; klik lagi, klik di luar panel, atau tekan Escape untuk menutup. Memilih halaman otomatis menutup menu tanpa mereset filter. Panel mengambang sehingga dashboard tetap menggunakan lebar penuh. Badge target pada header memakai ikon 🎯. Status pembaruan, mode siang/malam, dan tombol Keluar tersedia di menu. Tombol dapat dioperasikan lewat keyboard dan animasi mengikuti preferensi reduced motion.
+
+Rincian Tabel IMJAS memiliki filter Branch dan bulan khusus tabel, terpisah dari filter progres harian. Seluruh tabel (performansi Branch, rekap, detail tiket, ringkasan bulanan Branch & Service Area, dan IMJAS) memiliki header kolom yang tetap terlihat saat isi tabel digulir.
 
 ## Menjalankan lokal
 
