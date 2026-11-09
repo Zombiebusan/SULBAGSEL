@@ -7,6 +7,7 @@ export function sidebarNavigation(html: string): string {
     .replace('<span class="nav-number">03</span>', '<span class="nav-number">'+icon('<path d="M12 3v18M17 7H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>')+'</span>')
     .replace('</aside>', '</div></div></aside>')
     .replace('<div class="nav-caption">', '<div id="sidebarMenu" class="sidebar-menu"><div id="sidebarMenuInner" class="sidebar-menu-inner"><div class="nav-caption">')
+    .replace('<small>EXECUTIVE SULBAGSEL</small>', '')
     .replace('<span class="badge">Target', '<span class="badge"><span class="target-icon" aria-hidden="true">🎯</span>Target');
 }
 
@@ -94,9 +95,9 @@ export const navigationStyle = String.raw`
  .sidebar-layout>.sidebar{padding:0;border-right:0}
  .sidebar-layout .sidebar-brand{display:flex;align-items:center;flex-direction:row;gap:10px;width:100%;min-height:var(--dashboard-header-height,140px);margin:0;padding:20px 14px;border:0;border-radius:0;background:#18364b;text-align:left;cursor:pointer}
  .sidebar-layout .sidebar-brand:hover{background:#18364b}
- .sidebar-layout .sidebar-brand strong{color:#fff}
+ .sidebar-layout .sidebar-brand strong{color:#fff;font-size:clamp(22px,2.05vw,32px);line-height:1.25;font-weight:750;letter-spacing:-.025em}
  .sidebar-layout .sidebar-brand small{color:#d0dfe9}
- .sidebar-layout .sidebar-brand .brand-mark{background:#ffffff16;border:1px solid #ffffff40;box-shadow:none}
+ .sidebar-layout .sidebar-brand .brand-mark{display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;font-size:30px;border-radius:12px;background:#ffffff16;border:1px solid #ffffff40;box-shadow:none}
  html[data-theme="dark"] .sidebar-layout .sidebar-brand,html[data-theme="dark"] .sidebar-layout .sidebar-brand:hover{background:#141414}
  .sidebar-layout .sidebar-brand-copy{min-width:0}
  .sidebar-layout .sidebar-menu-inner{padding:0 10px 18px}
@@ -112,7 +113,7 @@ export const navigationStyle = String.raw`
  .sidebar-layout .logout-button{display:flex;align-items:center;justify-content:center;gap:8px}
  .sidebar-layout .logout-button[hidden]{display:none}
  .sidebar-layout .logout-button svg{width:16px;height:16px;flex:none}
- @media(max-width:760px){main>header{padding:16px 12px}.sidebar-layout.app-layout{padding:14px 10px}.sidebar-layout .sidebar-brand{padding:16px 10px}.sidebar-layout .nav-item{flex-direction:row;align-items:center;gap:6px}.sidebar-layout .nav-number{flex-basis:24px;width:24px;height:24px}}
+ @media(max-width:760px){main>header{padding:16px 12px}.sidebar-layout.app-layout{padding:14px 10px}.sidebar-layout .sidebar-brand{padding:16px 10px}.sidebar-layout .sidebar-brand strong{font-size:16px}.sidebar-layout .sidebar-brand .brand-mark{flex-basis:42px;width:42px;height:42px;font-size:27px}.sidebar-layout .nav-item{flex-direction:row;align-items:center;gap:6px}.sidebar-layout .nav-number{flex-basis:24px;width:24px;height:24px}}
 }
 @media print{body>main{width:100%;margin:0}.sidebar{display:none!important}main .tablewrap:has(table){max-height:none!important;overflow:visible!important}main .tablewrap:has(table) thead{position:static}}
 `;
