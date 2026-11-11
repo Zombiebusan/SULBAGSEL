@@ -2,6 +2,8 @@
 
 Dashboard Next.js untuk Vercel, dengan login, pengambilan data terbaru saat halaman dibuka atau di-refresh, dan histori Neon PostgreSQL. Tidak ada polling otomatis atau jeda 60 detik. Tampilan menggunakan **HTML referensi asli** sebagai sumber layout, CSS, tabel, dan rumus. File referensi tetap diperlukan saat build/deploy.
 
+Bot Telegram memiliki endpoint privat `GET /api/bot/visuals?requestId=...` untuk tujuh foto tren/performansi/IMJAS. Endpoint hanya tersedia dengan `UNSPEC_BOT_API_TOKEN` yang sama dengan `/api/bot/unspec`, dan hanya untuk request bot yang selesai. Keluaran berisi agregat snapshot harian, posisi API yang dibekukan, basis pelanggan dan IMJAS referensi dashboard; tidak berisi identitas pelanggan atau tiket mentah. Deploy dashboard ini **sebelum** mengaktifkan tombol Capture Dashboard pada bot. Histori kosong tetap ditandai sebagai belum tersedia, bukan diisi angka taksiran.
+
 ## Navigasi dashboard
 
 Menu berupa **sidebar tetap di sisi kiri yang menyatu dengan header tanpa celah**. Klik logo **U** pada sidebar untuk berganti antara menu lengkap dengan teks dan mode ringkas berisi ikon. Area dashboard menyesuaikan lebar sidebar; ikon tetap dapat dipakai berpindah halaman. Pada layar kecil menu awal diringkas. Mode siang memakai sidebar putih dan mode malam memakai latar gelap. Badge target memakai ikon 🎯. Status pembaruan tersedia pada menu lengkap; mode siang/malam dan Keluar tersedia dalam kedua mode sidebar. Perpindahan halaman tidak mereset filter dan dapat dioperasikan lewat keyboard.
